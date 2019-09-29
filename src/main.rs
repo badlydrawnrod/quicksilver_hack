@@ -40,8 +40,7 @@ enum UpdateStatus {
 
 struct Playing {
     tiles: Asset<Vec<Image>>,
-    x: i32,
-    y: i32,
+    pos: Vector,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
@@ -50,8 +49,7 @@ impl Playing {
     fn new() -> Result<Self> {
         Ok(Self {
             tiles: load_tiles("sprite_tiles.png".to_string(), 8),
-            x: 0,
-            y: 0,
+            pos: Vector::ZERO,
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
@@ -101,9 +99,10 @@ impl Playing {
             _ => 0,
         };
 
-        // TODO: don't speed up for diagonals.
-        self.x += dx;
-        self.y += dy;
+        if dx != 0 || dy != 0 {
+            let movement = Vector::new(dx, dy);
+            self.pos += movement.normalize();
+        }
 
         if quit {
             Ok(UpdateStatus::Quit)
@@ -113,8 +112,7 @@ impl Playing {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        let origin_x = self.x;
-        let origin_y = self.y;
+        let (origin_x, origin_y) = (self.pos.x as i32, self.pos.y as i32);
 
         // Draw all of the tiles, indvidually.
         self.tiles.execute(|images| {
