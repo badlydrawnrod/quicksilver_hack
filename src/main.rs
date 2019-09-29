@@ -6,12 +6,14 @@ const VIRTUAL_WIDTH: u32 = 240;
 const VIRTUAL_HEIGHT: u32 = 160;
 
 use quicksilver::{
-    geom::{Circle, Line, Rectangle, Shape, Transform, Triangle, Vector},
-    graphics::{Background::Col, Background::Img, Color, Image, ImageScaleStrategy, View},
+    geom::{Rectangle, Shape, Vector},
+    graphics::{Background::Img, Color, Image, ImageScaleStrategy, View},
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
     Future, Result,
 };
+
+use gilrs::{Button, GamepadId, Gilrs};
 
 fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
     Asset::new(Image::load(filename).map(move |image| {
@@ -40,6 +42,8 @@ struct Playing {
     tiles: Asset<Vec<Image>>,
     x: i32,
     y: i32,
+    gilrs: Gilrs,
+    active_gamepad: Option<GamepadId>,
 }
 
 impl Playing {
@@ -48,21 +52,50 @@ impl Playing {
             tiles: load_tiles("sprite_tiles.png".to_string(), 8),
             x: 0,
             y: 0,
+            gilrs: Gilrs::new()?,
+            active_gamepad: None,
         })
     }
 
     fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
-        let right_down = window.keyboard()[Key::Right].is_down();
-        let left_down = window.keyboard()[Key::Left].is_down();
-        let up_down = window.keyboard()[Key::Up].is_down();
-        let down_down = window.keyboard()[Key::Down].is_down();
+        let mut quit = false;
+        let mut right_pressed = false;
+        let mut left_pressed = false;
+        let mut up_pressed = false;
+        let mut down_pressed = false;
 
-        let dx = match (left_down, right_down) {
+        // Use GilRs directly, because Quicksilver doesn't see some of the buttons.
+
+        // Examine new gamepad events.
+        while let Some(event) = self.gilrs.next_event() {
+            if self.active_gamepad.is_none() {
+                self.active_gamepad = Some(event.id);
+            }
+        }
+
+        // Check the player's gamepad.
+        if let Some(id) = self.active_gamepad {
+            let gamepad = self.gilrs.gamepad(id);
+            quit = quit || gamepad.is_pressed(Button::Select);
+            left_pressed = left_pressed || gamepad.is_pressed(Button::DPadLeft);
+            right_pressed = right_pressed || gamepad.is_pressed(Button::DPadRight);
+            up_pressed = up_pressed || gamepad.is_pressed(Button::DPadUp);
+            down_pressed = down_pressed || gamepad.is_pressed(Button::DPadDown);
+        }
+
+        // Check the keyboard.
+        quit = quit || window.keyboard()[Key::Escape].is_down();
+        right_pressed = right_pressed || window.keyboard()[Key::Right].is_down();
+        left_pressed = left_pressed || window.keyboard()[Key::Left].is_down();
+        up_pressed = up_pressed || window.keyboard()[Key::Up].is_down();
+        down_pressed = down_pressed || window.keyboard()[Key::Down].is_down();
+
+        let dx = match (left_pressed, right_pressed) {
             (true, false) => -1,
             (false, true) => 1,
             _ => 0,
         };
-        let dy = match (up_down, down_down) {
+        let dy = match (up_pressed, down_pressed) {
             (true, false) => -1,
             (false, true) => 1,
             _ => 0,
@@ -72,7 +105,7 @@ impl Playing {
         self.x += dx;
         self.y += dy;
 
-        if window.keyboard()[Key::Escape].is_down() {
+        if quit {
             Ok(UpdateStatus::Quit)
         } else {
             Ok(UpdateStatus::Continue)
@@ -157,7 +190,3 @@ fn main() {
         settings,
     );
 }
-
-// TODO: compare with these other quicksilver games...
-//      https://github.com/WushuWorks/I-am-the-Elder-God/blob/master/src/game_logic/main_state.rs
-//      https://github.com/rickyhan/dyn-grammar/blob/master/src/main.rs

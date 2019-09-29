@@ -7,7 +7,6 @@
       <sourceFolder url="file://$MODULE_DIR$/../quicksilver_hack\tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/../quicksilver_hack\benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
-      <excludeFolder url="file://$MODULE_DIR$/../quicksilver_hack\target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
