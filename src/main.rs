@@ -33,13 +33,48 @@ fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
     }))
 }
 
+enum CurrentState {
+    Loading,
+    Playing,
+}
+
 enum UpdateStatus {
+    DoneLoading(Vec<Image>),
     Quit,
     Continue,
 }
 
-struct Playing {
+struct Loading {
     tiles: Asset<Vec<Image>>,
+}
+
+impl Loading {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            tiles: load_tiles("sprite_tiles.png".to_string(), 8),
+        })
+    }
+
+    fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
+        let mut result: Vec<Image> = Vec::new();
+        self.tiles.execute(|images| {
+            result.append(images);
+            Ok(())
+        });
+        if result.is_empty() {
+            Ok(UpdateStatus::Continue)
+        } else {
+            Ok(UpdateStatus::DoneLoading(result))
+        }
+    }
+
+    fn draw(&mut self, window: &mut Window) -> Result<()> {
+        Ok(())
+    }
+}
+
+struct Playing {
+    tiles: Vec<Image>,
     pos: Vector,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
@@ -48,11 +83,15 @@ struct Playing {
 impl Playing {
     fn new() -> Result<Self> {
         Ok(Self {
-            tiles: load_tiles("sprite_tiles.png".to_string(), 8),
+            tiles: Vec::new(),
             pos: Vector::ZERO,
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
+    }
+
+    fn set_images(&mut self, images: Vec<Image>) {
+        self.tiles = images;
     }
 
     fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
@@ -115,26 +154,26 @@ impl Playing {
         let (origin_x, origin_y) = (self.pos.x as i32, self.pos.y as i32);
 
         // Draw all of the tiles, indvidually.
-        self.tiles.execute(|images| {
-            let mut images = images.iter();
-            for y in 0..16 {
-                for x in 0..16 {
-                    if let Some(image) = images.next() {
-                        window.draw(
-                            &image
-                                .area()
-                                .with_center((origin_x + x * 9, origin_y + y * 9)),
-                            Img(&image),
-                        );
-                    }
+        let mut images = self.tiles.iter();
+        for y in 0..16 {
+            for x in 0..16 {
+                if let Some(image) = images.next() {
+                    window.draw(
+                        &image
+                            .area()
+                            .with_center((origin_x + x * 9, origin_y + y * 9)),
+                        Img(&image),
+                    );
                 }
             }
-            Ok(())
-        })
+        }
+        Ok(())
     }
 }
 
 struct Game {
+    current_state: CurrentState,
+    loading: Loading,
     playing: Playing,
 }
 
@@ -152,25 +191,41 @@ impl Game {
 impl State for Game {
     fn new() -> Result<Game> {
         Ok(Game {
+            current_state: CurrentState::Loading,
+            loading: Loading::new()?,
             playing: Playing::new()?,
         })
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        match self.playing.update(window) {
-            Ok(UpdateStatus::Quit) => {
-                window.close();
+        self.current_state = match self.current_state {
+            CurrentState::Loading => match self.loading.update(window) {
+                Ok(UpdateStatus::DoneLoading(images)) => {
+                    self.playing.set_images(images);
+                    CurrentState::Playing
+                }
+                _ => CurrentState::Loading,
+            },
+            CurrentState::Playing => {
+                match self.playing.update(window) {
+                    Ok(UpdateStatus::Quit) => {
+                        window.close();
+                    }
+                    _ => (),
+                }
+                CurrentState::Playing
             }
-            _ => (),
-        }
+        };
         Ok(())
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         Game::use_retro_view(window);
         window.clear(Color::BLACK)?;
-        self.playing.draw(window)?;
-        Ok(())
+        match self.current_state {
+            CurrentState::Loading => self.loading.draw(window),
+            CurrentState::Playing => self.playing.draw(window),
+        }
     }
 }
 
