@@ -44,6 +44,11 @@ enum UpdateStatus {
     Continue,
 }
 
+trait GameState {
+    fn update(&mut self, window: &mut Window) -> Result<UpdateStatus>;
+    fn draw(&mut self, window: &mut Window) -> Result<()>;
+}
+
 struct Loading {
     tiles: Asset<Vec<Image>>,
 }
@@ -54,7 +59,9 @@ impl Loading {
             tiles: load_tiles("sprite_tiles.png".to_string(), 8),
         })
     }
+}
 
+impl GameState for Loading {
     fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
         let mut result: Vec<Image> = Vec::new();
         self.tiles.execute(|images| {
@@ -81,9 +88,9 @@ struct Playing {
 }
 
 impl Playing {
-    fn new() -> Result<Self> {
+    fn new(tiles: Vec<Image>) -> Result<Self> {
         Ok(Self {
-            tiles: Vec::new(),
+            tiles: tiles,
             pos: Vector::ZERO,
             gilrs: Gilrs::new()?,
             active_gamepad: None,
@@ -93,7 +100,9 @@ impl Playing {
     fn set_images(&mut self, images: Vec<Image>) {
         self.tiles = images;
     }
+}
 
+impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
         let mut quit = false;
         let mut right_pressed = false;
@@ -173,8 +182,7 @@ impl Playing {
 
 struct Game {
     current_state: CurrentState,
-    loading: Loading,
-    playing: Playing,
+    game_state: Box<dyn GameState>,
 }
 
 impl Game {
@@ -192,22 +200,22 @@ impl State for Game {
     fn new() -> Result<Game> {
         Ok(Game {
             current_state: CurrentState::Loading,
-            loading: Loading::new()?,
-            playing: Playing::new()?,
+            game_state: Box::new(Loading::new()?),
         })
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
+        // TODO: there's room for improvement here.
         self.current_state = match self.current_state {
-            CurrentState::Loading => match self.loading.update(window) {
+            CurrentState::Loading => match self.game_state.update(window) {
                 Ok(UpdateStatus::DoneLoading(images)) => {
-                    self.playing.set_images(images);
+                    self.game_state = Box::new(Playing::new(images)?);
                     CurrentState::Playing
                 }
                 _ => CurrentState::Loading,
             },
             CurrentState::Playing => {
-                match self.playing.update(window) {
+                match self.game_state.update(window) {
                     Ok(UpdateStatus::Quit) => {
                         window.close();
                     }
@@ -222,10 +230,7 @@ impl State for Game {
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         Game::use_retro_view(window);
         window.clear(Color::BLACK)?;
-        match self.current_state {
-            CurrentState::Loading => self.loading.draw(window),
-            CurrentState::Playing => self.playing.draw(window),
-        }
+        self.game_state.draw(window)
     }
 }
 
