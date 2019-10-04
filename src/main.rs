@@ -33,11 +33,6 @@ fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
     }))
 }
 
-enum CurrentState {
-    Loading,
-    Playing,
-}
-
 enum UpdateStatus {
     DoneLoading(Vec<Image>),
     Quit,
@@ -45,8 +40,12 @@ enum UpdateStatus {
 }
 
 trait GameState {
-    fn update(&mut self, window: &mut Window) -> Result<UpdateStatus>;
-    fn draw(&mut self, window: &mut Window) -> Result<()>;
+    fn update(&mut self, _window: &mut Window) -> Result<UpdateStatus> {
+        Ok(UpdateStatus::Continue)
+    }
+    fn draw(&mut self, _window: &mut Window) -> Result<()> {
+        Ok(())
+    }
 }
 
 struct Loading {
@@ -62,21 +61,17 @@ impl Loading {
 }
 
 impl GameState for Loading {
-    fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
+    fn update(&mut self, _window: &mut Window) -> Result<UpdateStatus> {
         let mut result: Vec<Image> = Vec::new();
         self.tiles.execute(|images| {
             result.append(images);
             Ok(())
-        });
+        })?;
         if result.is_empty() {
             Ok(UpdateStatus::Continue)
         } else {
             Ok(UpdateStatus::DoneLoading(result))
         }
-    }
-
-    fn draw(&mut self, window: &mut Window) -> Result<()> {
-        Ok(())
     }
 }
 
@@ -95,10 +90,6 @@ impl Playing {
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
-    }
-
-    fn set_images(&mut self, images: Vec<Image>) {
-        self.tiles = images;
     }
 }
 
@@ -181,7 +172,6 @@ impl GameState for Playing {
 }
 
 struct Game {
-    current_state: CurrentState,
     game_state: Box<dyn GameState>,
 }
 
@@ -199,31 +189,20 @@ impl Game {
 impl State for Game {
     fn new() -> Result<Game> {
         Ok(Game {
-            current_state: CurrentState::Loading,
             game_state: Box::new(Loading::new()?),
         })
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        // TODO: there's room for improvement here.
-        self.current_state = match self.current_state {
-            CurrentState::Loading => match self.game_state.update(window) {
-                Ok(UpdateStatus::DoneLoading(images)) => {
-                    self.game_state = Box::new(Playing::new(images)?);
-                    CurrentState::Playing
-                }
-                _ => CurrentState::Loading,
-            },
-            CurrentState::Playing => {
-                match self.game_state.update(window) {
-                    Ok(UpdateStatus::Quit) => {
-                        window.close();
-                    }
-                    _ => (),
-                }
-                CurrentState::Playing
+        match self.game_state.update(window) {
+            Ok(UpdateStatus::DoneLoading(images)) => {
+                self.game_state = Box::new(Playing::new(images)?);
             }
-        };
+            Ok(UpdateStatus::Quit) => {
+                window.close();
+            }
+            _ => (),
+        }
         Ok(())
     }
 
