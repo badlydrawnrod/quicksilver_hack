@@ -33,16 +33,25 @@ fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
     }))
 }
 
-enum UpdateStatus {
-    DoneLoading(Vec<Image>),
-    Quit,
-    Continue,
+enum Action {
+    Quit,                           // Stop the entire state machine (or game).
+    Continue,                       // Continue in the current state.
+    Transition(Box<dyn GameState>), // Switch to the new state.
+}
+
+use Action::{Continue, Quit, Transition};
+
+impl From<Action> for Result<Action> {
+    fn from(r: Action) -> Self {
+        Ok(r)
+    }
 }
 
 trait GameState {
-    fn update(&mut self, _window: &mut Window) -> Result<UpdateStatus> {
-        Ok(UpdateStatus::Continue)
+    fn update(&mut self, _window: &mut Window) -> Result<Action> {
+        Continue.into()
     }
+
     fn draw(&mut self, _window: &mut Window) -> Result<()> {
         Ok(())
     }
@@ -61,17 +70,18 @@ impl Loading {
 }
 
 impl GameState for Loading {
-    fn update(&mut self, _window: &mut Window) -> Result<UpdateStatus> {
-        let mut result: Vec<Image> = Vec::new();
+    fn update(&mut self, _window: &mut Window) -> Result<Action> {
+        let mut tiles: Vec<Image> = Vec::new();
         self.tiles.execute(|images| {
-            result.append(images);
+            tiles.append(images);
             Ok(())
         })?;
-        if result.is_empty() {
-            Ok(UpdateStatus::Continue)
+        let result = if tiles.is_empty() {
+            Continue
         } else {
-            Ok(UpdateStatus::DoneLoading(result))
-        }
+            Transition(Box::new(Playing::new(tiles)?))
+        };
+        result.into()
     }
 }
 
@@ -94,7 +104,7 @@ impl Playing {
 }
 
 impl GameState for Playing {
-    fn update(&mut self, window: &mut Window) -> Result<UpdateStatus> {
+    fn update(&mut self, window: &mut Window) -> Result<Action> {
         let mut quit = false;
         let mut right_pressed = false;
         let mut left_pressed = false;
@@ -143,11 +153,8 @@ impl GameState for Playing {
             self.pos += movement.normalize();
         }
 
-        if quit {
-            Ok(UpdateStatus::Quit)
-        } else {
-            Ok(UpdateStatus::Continue)
-        }
+        let result = if quit { Quit } else { Continue };
+        result.into()
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
@@ -195,10 +202,10 @@ impl State for Game {
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
         match self.game_state.update(window) {
-            Ok(UpdateStatus::DoneLoading(images)) => {
-                self.game_state = Box::new(Playing::new(images)?);
+            Ok(Action::Transition(new_state)) => {
+                self.game_state = new_state;
             }
-            Ok(UpdateStatus::Quit) => {
+            Ok(Action::Quit) => {
                 window.close();
             }
             _ => (),
