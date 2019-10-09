@@ -6,8 +6,10 @@ const VIRTUAL_WIDTH: u32 = 240;
 const VIRTUAL_HEIGHT: u32 = 160;
 
 use quicksilver::{
-    geom::{Rectangle, Shape, Vector},
-    graphics::{Background::Img, Color, Image, ImageScaleStrategy, View},
+    geom::{Line, Rectangle, Shape, Vector},
+    graphics::{
+        Background::Col, Background::Img, Color, Image, ImageScaleStrategy, View,
+    },
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
     Future, Result,
@@ -34,8 +36,10 @@ fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
 }
 
 enum Action {
-    Quit,                           // Stop the entire state machine (or game).
-    Continue,                       // Continue in the current state.
+    Quit,
+    // Stop the entire state machine (or game).
+    Continue,
+    // Continue in the current state.
     Transition(Box<dyn GameState>), // Switch to the new state.
 }
 
@@ -85,9 +89,19 @@ impl GameState for Loading {
     }
 }
 
+struct Player {
+    pos: Vector,
+}
+
+impl Player {
+    fn move_by(&mut self, dv: Vector) {
+        self.pos += dv;
+    }
+}
+
 struct Playing {
     tiles: Vec<Image>,
-    pos: Vector,
+    player: Player,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
@@ -96,7 +110,9 @@ impl Playing {
     fn new(tiles: Vec<Image>) -> Result<Self> {
         Ok(Self {
             tiles: tiles,
-            pos: Vector::ZERO,
+            player: Player {
+                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2),
+            },
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
@@ -150,7 +166,7 @@ impl GameState for Playing {
 
         if dx != 0 || dy != 0 {
             let movement = Vector::new(dx, dy);
-            self.pos += movement.normalize();
+            self.player.move_by(movement);
         }
 
         let result = if quit { Quit } else { Continue };
@@ -158,22 +174,10 @@ impl GameState for Playing {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        let (origin_x, origin_y) = (self.pos.x as i32, self.pos.y as i32);
-
-        // Draw all of the tiles, indvidually.
-        let mut images = self.tiles.iter();
-        for y in 0..16 {
-            for x in 0..16 {
-                if let Some(image) = images.next() {
-                    window.draw(
-                        &image
-                            .area()
-                            .with_center((origin_x + x * 9, origin_y + y * 9)),
-                        Img(&image),
-                    );
-                }
-            }
-        }
+        // Draw just the player.
+        let origin = self.player.pos;
+        let image = &self.tiles[24];
+        window.draw(&image.area().with_center((origin.x, origin.y)), Img(&image));
         Ok(())
     }
 }
@@ -216,7 +220,16 @@ impl State for Game {
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         Game::use_retro_view(window);
         window.clear(Color::BLACK)?;
-        self.game_state.draw(window)
+        self.game_state.draw(window)?;
+        window.draw(
+            &Line::new((8, 8), (VIRTUAL_WIDTH - 8, VIRTUAL_HEIGHT / 2 - 8)).with_thickness(2.0),
+            Col(Color::BLUE.with_alpha(0.5)),
+        );
+        window.draw(
+            &Line::new((VIRTUAL_WIDTH - 8, 8), (8, VIRTUAL_HEIGHT / 2 - 8)).with_thickness(2.0),
+            Col(Color::BLUE.with_alpha(0.5)),
+        );
+        Ok(())
     }
 }
 
