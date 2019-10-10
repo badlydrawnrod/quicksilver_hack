@@ -8,7 +8,8 @@ const VIRTUAL_HEIGHT: u32 = 160;
 use quicksilver::{
     geom::{Line, Rectangle, Shape, Vector},
     graphics::{
-        Background::Col, Background::Img, Color, Image, ImageScaleStrategy, View,
+        Background::Blended, Background::Col, Background::Img, Color, Image, ImageScaleStrategy,
+        View,
     },
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
@@ -111,7 +112,7 @@ impl Playing {
         Ok(Self {
             tiles: tiles,
             player: Player {
-                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2),
+                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 8),
             },
             gilrs: Gilrs::new()?,
             active_gamepad: None,
@@ -178,6 +179,27 @@ impl GameState for Playing {
         let origin = self.player.pos;
         let image = &self.tiles[24];
         window.draw(&image.area().with_center((origin.x, origin.y)), Img(&image));
+
+        //  We can draw lines whose "background" is an image, or even an image  blended with a
+        // colour as shown here, which is promising for doing glowy lines.
+        let image = &self.tiles[25];
+        window.draw(
+            &Line::new(
+                (8, 1 * VIRTUAL_HEIGHT / 4),
+                (VIRTUAL_WIDTH - 8, 3 * VIRTUAL_HEIGHT / 4),
+            )
+            .with_thickness(2.0),
+            Blended(&image, Color::WHITE.with_alpha(0.5)),
+        );
+        window.draw(
+            &Line::new(
+                (8, 3 * VIRTUAL_HEIGHT / 4),
+                (VIRTUAL_WIDTH - 8, 1 * VIRTUAL_HEIGHT / 4),
+            )
+                .with_thickness(2.0),
+            Blended(&image, Color::WHITE.with_alpha(0.5)),
+        );
+
         Ok(())
     }
 }
@@ -221,14 +243,6 @@ impl State for Game {
         Game::use_retro_view(window);
         window.clear(Color::BLACK)?;
         self.game_state.draw(window)?;
-        window.draw(
-            &Line::new((8, 8), (VIRTUAL_WIDTH - 8, VIRTUAL_HEIGHT / 2 - 8)).with_thickness(2.0),
-            Col(Color::BLUE.with_alpha(0.5)),
-        );
-        window.draw(
-            &Line::new((VIRTUAL_WIDTH - 8, 8), (8, VIRTUAL_HEIGHT / 2 - 8)).with_thickness(2.0),
-            Col(Color::BLUE.with_alpha(0.5)),
-        );
         Ok(())
     }
 }
