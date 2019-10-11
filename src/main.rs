@@ -1,9 +1,9 @@
 // Play around with Quicksilver with a view to rewriting the Jessica Engine in Rust.
 
-const WINDOW_WIDTH: u32 = 960;
-const WINDOW_HEIGHT: u32 = 640;
-const VIRTUAL_WIDTH: u32 = 240;
-const VIRTUAL_HEIGHT: u32 = 160;
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 600;
+const VIRTUAL_WIDTH: u32 = 800;
+const VIRTUAL_HEIGHT: u32 = 600;
 
 use quicksilver::{
     geom::{Line, Rectangle, Shape, Vector},
@@ -44,6 +44,7 @@ enum Action {
     Transition(Box<dyn GameState>), // Switch to the new state.
 }
 
+use quicksilver::graphics::BlendMode;
 use Action::{Continue, Quit, Transition};
 
 impl From<Action> for Result<Action> {
@@ -64,12 +65,14 @@ trait GameState {
 
 struct Loading {
     tiles: Asset<Vec<Image>>,
+    line: Asset<Image>,
 }
 
 impl Loading {
     fn new() -> Result<Self> {
         Ok(Self {
             tiles: load_tiles("sprite_tiles.png".to_string(), 8),
+            line: Asset::new(Image::load("line.png")),
         })
     }
 }
@@ -81,10 +84,15 @@ impl GameState for Loading {
             tiles.append(images);
             Ok(())
         })?;
-        let result = if tiles.is_empty() {
+        let mut lines: Vec<Image> = Vec::new();
+        self.line.execute(|image| {
+            lines.push(image.to_owned());
+            Ok(())
+        })?;
+        let result = if tiles.is_empty() && lines.is_empty() {
             Continue
         } else {
-            Transition(Box::new(Playing::new(tiles)?))
+            Transition(Box::new(Playing::new(tiles, lines)?))
         };
         result.into()
     }
@@ -102,15 +110,17 @@ impl Player {
 
 struct Playing {
     tiles: Vec<Image>,
+    lines: Vec<Image>,
     player: Player,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
 
 impl Playing {
-    fn new(tiles: Vec<Image>) -> Result<Self> {
+    fn new(tiles: Vec<Image>, lines: Vec<Image>) -> Result<Self> {
         Ok(Self {
             tiles: tiles,
+            lines: lines,
             player: Player {
                 pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 8),
             },
@@ -180,25 +190,52 @@ impl GameState for Playing {
         let image = &self.tiles[24];
         window.draw(&image.area().with_center((origin.x, origin.y)), Img(&image));
 
+        window.set_blend_mode(BlendMode::Additive);
+
         //  We can draw lines whose "background" is an image, or even an image  blended with a
         // colour as shown here, which is promising for doing glowy lines.
-        let image = &self.tiles[25];
+        let image = &self.lines[0];
         window.draw(
             &Line::new(
                 (8, 1 * VIRTUAL_HEIGHT / 4),
                 (VIRTUAL_WIDTH - 8, 3 * VIRTUAL_HEIGHT / 4),
             )
-            .with_thickness(2.0),
-            Blended(&image, Color::WHITE.with_alpha(0.5)),
+            .with_thickness(4.0),
+            Blended(&image, Color::CYAN.with_alpha(0.75)),
+            //            Blended(&image, Color::CYAN)
         );
         window.draw(
             &Line::new(
                 (8, 3 * VIRTUAL_HEIGHT / 4),
                 (VIRTUAL_WIDTH - 8, 1 * VIRTUAL_HEIGHT / 4),
             )
-                .with_thickness(2.0),
-            Blended(&image, Color::WHITE.with_alpha(0.5)),
+            .with_thickness(4.0),
+            Blended(&image, Color::MAGENTA.with_alpha(0.75)),
         );
+        for x in (0..=VIRTUAL_WIDTH).step_by(VIRTUAL_WIDTH as usize / 10) {
+            window.draw(
+                &Line::new((x, 0), (x, VIRTUAL_HEIGHT)).with_thickness(4.0),
+                Blended(&image, Color::RED.with_alpha(0.75)),
+            );
+        }
+        for y in (0..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 10) {
+            window.draw(
+                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(4.0),
+                Blended(&image, Color::RED.with_alpha(0.75)),
+            );
+        }
+        for x in (15..=VIRTUAL_WIDTH).step_by(VIRTUAL_WIDTH as usize / 10) {
+            window.draw(
+                &Line::new((x, 15), (x, VIRTUAL_HEIGHT+15)).with_thickness(4.0),
+                Blended(&image, Color::YELLOW),
+            );
+        }
+        for y in (15..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 10) {
+            window.draw(
+                &Line::new((15, y), (VIRTUAL_WIDTH+15, y)).with_thickness(4.0),
+                Blended(&image, Color::YELLOW),
+            );
+        }
 
         Ok(())
     }
