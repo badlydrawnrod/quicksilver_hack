@@ -2,15 +2,12 @@
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
-const VIRTUAL_WIDTH: u32 = 1280;
-const VIRTUAL_HEIGHT: u32 = 720;
+const VIRTUAL_WIDTH: u32 = WINDOW_WIDTH;
+const VIRTUAL_HEIGHT: u32 = WINDOW_HEIGHT;
 
 use quicksilver::{
     geom::{Line, Rectangle, Vector},
-    graphics::{
-        Background::Blended, Color, Image, ImageScaleStrategy,
-        View,
-    },
+    graphics::{Background::Blended, Color, Image, ImageScaleStrategy, View},
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
     Result,
@@ -82,9 +79,25 @@ impl Player {
     }
 }
 
+struct MyLine {
+    start: Vector,
+    end: Vector,
+    colour: Color,
+}
+
+impl MyLine {
+    fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
+        MyLine {
+            start: start.into(),
+            end: end.into(),
+            colour: colour.into(),
+        }
+    }
+}
+
 struct Playing {
     line_images: Vec<Image>,
-    lines: Vec<Line>,
+    lines: Vec<MyLine>,
     angle: f32,
     player: Player,
     gilrs: Gilrs,
@@ -94,29 +107,39 @@ struct Playing {
 impl Playing {
     fn new(line_images: Vec<Image>) -> Result<Self> {
         let lines = vec![
-            Line::new((-16, 16), (16, 16)),
-            Line::new((16, 16), (0, -16)),
-            Line::new((0, -16), (-16, 16)),
+            MyLine::new((-16, 16), (16, 16), Color::CYAN),
+            MyLine::new((16, 16), (0, -16), Color::GREEN),
+            MyLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
         Ok(Self {
-            line_images: line_images,
-            lines: lines,
+            line_images,
+            lines,
             angle: 0.0,
             player: Player {
-                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 8),
+                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 4),
             },
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
     }
 
-    fn draw_player(&self, window: &mut Window) {
+    fn draw_lines<'a>(
+        &self,
+        transform: Transform,
+        lines: impl Iterator<Item = &'a MyLine>,
+        window: &mut Window,
+    ) {
         let image = &self.line_images[0];
-        let transform = Transform::translate(self.player.pos) * Transform::rotate(self.angle);
-        for line in &self.lines {
-            let line = Line::new(transform * line.a, transform * line.b).with_thickness(6.0);
-            window.draw(&line, Blended(&image, Color::GREEN.with_alpha(0.75)));
+        for my_line in lines {
+            let line =
+                Line::new(transform * my_line.start, transform * my_line.end).with_thickness(16.0);
+            window.draw(&line, Blended(&image, my_line.colour.with_alpha(0.75)));
         }
+    }
+
+    fn draw_player(&self, window: &mut Window) {
+        let transform = Transform::translate(self.player.pos) * Transform::rotate(self.angle);
+        self.draw_lines(transform, self.lines.iter(), window);
     }
 
     fn draw_grid(&self, window: &mut Window) {
@@ -125,13 +148,13 @@ impl Playing {
         let image = &self.line_images[0];
         for x in (0..=VIRTUAL_WIDTH).step_by(VIRTUAL_HEIGHT as usize / 8) {
             window.draw(
-                &Line::new((x, VIRTUAL_HEIGHT / 2), (x, VIRTUAL_HEIGHT)).with_thickness(6.0),
+                &Line::new((x, VIRTUAL_HEIGHT / 2), (x, VIRTUAL_HEIGHT)).with_thickness(16.0),
                 Blended(&image, Color::YELLOW.with_alpha(0.75)),
             );
         }
         for y in (VIRTUAL_HEIGHT / 2..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 8) {
             window.draw(
-                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(6.0),
+                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(16.0),
                 Blended(&image, Color::YELLOW.with_alpha(0.75)),
             );
         }
