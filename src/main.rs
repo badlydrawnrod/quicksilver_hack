@@ -1,49 +1,30 @@
-// Play around with Quicksilver with a view to rewriting the Jessica Engine in Rust.
+// Play around with Quicksilver... trying to draw "glowy" lines.
 
-const WINDOW_WIDTH: u32 = 720;
+const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
-const VIRTUAL_WIDTH: u32 = 720;
+const VIRTUAL_WIDTH: u32 = 1280;
 const VIRTUAL_HEIGHT: u32 = 720;
 
 use quicksilver::{
-    geom::{Line, Rectangle, Shape, Vector},
+    geom::{Line, Rectangle, Vector},
     graphics::{
-        Background::Blended, Background::Col, Background::Img, Color, Image, ImageScaleStrategy,
+        Background::Blended, Color, Image, ImageScaleStrategy,
         View,
     },
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
-    Future, Result,
+    Result,
 };
 
 use gilrs::{Button, GamepadId, Gilrs};
 
-fn load_tiles(filename: String, tile_size: i32) -> Asset<Vec<Image>> {
-    Asset::new(Image::load(filename).map(move |image| {
-        let area = image.area();
-        let width_in_tiles = area.width() as i32 / tile_size;
-        let height_in_tiles = area.height() as i32 / tile_size;
-        let mut images: Vec<Image> = Vec::new();
-        for y in 0..height_in_tiles {
-            for x in 0..width_in_tiles {
-                images.push(image.subimage(Rectangle::new(
-                    (x * tile_size, y * tile_size),
-                    (tile_size, tile_size),
-                )));
-            }
-        }
-        images
-    }))
-}
-
 enum Action {
-    Quit,
-    // Stop the entire state machine (or game).
-    Continue,
-    // Continue in the current state.
+    Quit,                           // Stop the entire state machine (or game).
+    Continue,                       // Continue in the current state.
     Transition(Box<dyn GameState>), // Switch to the new state.
 }
 
+use quicksilver::geom::Transform;
 use quicksilver::graphics::BlendMode;
 use Action::{Continue, Quit, Transition};
 
@@ -64,14 +45,12 @@ trait GameState {
 }
 
 struct Loading {
-    tiles: Asset<Vec<Image>>,
     line: Asset<Image>,
 }
 
 impl Loading {
     fn new() -> Result<Self> {
         Ok(Self {
-            tiles: load_tiles("sprite_tiles.png".to_string(), 8),
             line: Asset::new(Image::load("line.png")),
         })
     }
@@ -79,20 +58,15 @@ impl Loading {
 
 impl GameState for Loading {
     fn update(&mut self, _window: &mut Window) -> Result<Action> {
-        let mut tiles: Vec<Image> = Vec::new();
-        self.tiles.execute(|images| {
-            tiles.append(images);
-            Ok(())
-        })?;
         let mut lines: Vec<Image> = Vec::new();
         self.line.execute(|image| {
             lines.push(image.to_owned());
             Ok(())
         })?;
-        let result = if tiles.is_empty() && lines.is_empty() {
+        let result = if lines.is_empty() {
             Continue
         } else {
-            Transition(Box::new(Playing::new(tiles, lines)?))
+            Transition(Box::new(Playing::new(lines)?))
         };
         result.into()
     }
@@ -109,18 +83,25 @@ impl Player {
 }
 
 struct Playing {
-    tile_images: Vec<Image>,
     line_images: Vec<Image>,
+    lines: Vec<Line>,
+    angle: f32,
     player: Player,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
 
 impl Playing {
-    fn new(tiles: Vec<Image>, lines: Vec<Image>) -> Result<Self> {
+    fn new(line_images: Vec<Image>) -> Result<Self> {
+        let lines = vec![
+            Line::new((-16, 16), (16, 16)),
+            Line::new((16, 16), (0, -16)),
+            Line::new((0, -16), (-16, 16)),
+        ];
         Ok(Self {
-            tile_images: tiles,
-            line_images: lines,
+            line_images: line_images,
+            lines: lines,
+            angle: 0.0,
             player: Player {
                 pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 8),
             },
@@ -130,24 +111,27 @@ impl Playing {
     }
 
     fn draw_player(&self, window: &mut Window) {
-        let origin = self.player.pos;
-        let image = &self.tile_images[24];
-        window.draw(&image.area().with_center((origin.x, origin.y)), Img(&image));
+        let image = &self.line_images[0];
+        let transform = Transform::translate(self.player.pos) * Transform::rotate(self.angle);
+        for line in &self.lines {
+            let line = Line::new(transform * line.a, transform * line.b).with_thickness(6.0);
+            window.draw(&line, Blended(&image, Color::GREEN.with_alpha(0.75)));
+        }
     }
 
     fn draw_grid(&self, window: &mut Window) {
         //  We can draw lines whose "background" is an image, or even an image blended with a
         // colour as shown here, which is promising for doing glowy lines.
         let image = &self.line_images[0];
-        for x in (0..=VIRTUAL_WIDTH).step_by(VIRTUAL_WIDTH as usize / 10) {
+        for x in (0..=VIRTUAL_WIDTH).step_by(VIRTUAL_HEIGHT as usize / 8) {
             window.draw(
-                &Line::new((x, 0), (x, VIRTUAL_HEIGHT)).with_thickness(4.0),
+                &Line::new((x, VIRTUAL_HEIGHT / 2), (x, VIRTUAL_HEIGHT)).with_thickness(6.0),
                 Blended(&image, Color::YELLOW.with_alpha(0.75)),
             );
         }
-        for y in (0..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 10) {
+        for y in (VIRTUAL_HEIGHT / 2..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 8) {
             window.draw(
-                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(4.0),
+                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(6.0),
                 Blended(&image, Color::YELLOW.with_alpha(0.75)),
             );
         }
@@ -161,6 +145,8 @@ impl GameState for Playing {
         let mut left_pressed = false;
         let mut up_pressed = false;
         let mut down_pressed = false;
+        let mut rotate_anticlockwise = false;
+        let mut rotate_clockwise = false;
 
         // Use GilRs directly, because Quicksilver doesn't see some of the buttons.
 
@@ -188,31 +174,40 @@ impl GameState for Playing {
         left_pressed = left_pressed || window.keyboard()[Key::Left].is_down();
         up_pressed = up_pressed || window.keyboard()[Key::Up].is_down();
         down_pressed = down_pressed || window.keyboard()[Key::Down].is_down();
+        rotate_anticlockwise = rotate_anticlockwise || window.keyboard()[Key::Q].is_down();
+        rotate_clockwise = rotate_clockwise || window.keyboard()[Key::E].is_down();
 
         let dx = match (left_pressed, right_pressed) {
-            (true, false) => -1,
-            (false, true) => 1,
-            _ => 0,
+            (true, false) => -1.0,
+            (false, true) => 1.0,
+            _ => 0.0,
         };
         let dy = match (up_pressed, down_pressed) {
-            (true, false) => -1,
-            (false, true) => 1,
-            _ => 0,
+            (true, false) => -1.0,
+            (false, true) => 1.0,
+            _ => 0.0,
         };
 
-        if dx != 0 || dy != 0 {
-            let movement = Vector::new(dx, dy);
+        if dx != 0.0 || dy != 0.0 {
+            let movement = Vector::new(dx * 2.0, dy * 2.0);
             self.player.move_by(movement);
         }
+
+        let d_theta = match (rotate_anticlockwise, rotate_clockwise) {
+            (true, false) => -1.0,
+            (false, true) => 1.0,
+            _ => 0.0,
+        };
+        self.angle += d_theta * 4.0;
 
         let result = if quit { Quit } else { Continue };
         result.into()
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        self.draw_player(window);
-        window.set_blend_mode(BlendMode::Additive);
+        window.set_blend_mode(BlendMode::Additive)?;
         self.draw_grid(window);
+        self.draw_player(window);
 
         Ok(())
     }
@@ -223,7 +218,7 @@ struct Game {
 }
 
 impl Game {
-    fn use_retro_view(window: &mut Window) {
+    fn rescale_viewport(window: &mut Window) {
         let view_rect = Rectangle::new(
             Vector::new(0, 0),
             Vector::new(VIRTUAL_WIDTH, VIRTUAL_HEIGHT),
@@ -254,10 +249,9 @@ impl State for Game {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        Game::use_retro_view(window);
+        Game::rescale_viewport(window);
         window.clear(Color::BLACK)?;
-        self.game_state.draw(window)?;
-        Ok(())
+        self.game_state.draw(window)
     }
 }
 
@@ -265,12 +259,12 @@ fn main() {
     let fps = 60.0;
     let update_rate_ms = 1000.0 / fps;
     let settings = Settings {
-        scale: ImageScaleStrategy::Pixelate,
+        scale: ImageScaleStrategy::Blur,
         update_rate: update_rate_ms,
         ..Settings::default()
     };
     run::<Game>(
-        "Quicksilver hack",
+        "Quicksilver hack/lines",
         Vector::new(WINDOW_WIDTH, WINDOW_HEIGHT),
         settings,
     );
