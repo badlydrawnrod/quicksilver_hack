@@ -15,6 +15,11 @@ use quicksilver::{
 
 use gilrs::{Button, GamepadId, Gilrs};
 
+use rand::{
+    Rng,
+    prelude::*,
+};
+
 enum Action {
     Quit,                           // Stop the entire state machine (or game).
     Continue,                       // Continue in the current state.
@@ -24,6 +29,7 @@ enum Action {
 use quicksilver::geom::Transform;
 use quicksilver::graphics::BlendMode;
 use Action::{Continue, Quit, Transition};
+use quicksilver::prelude::Shape;
 
 impl From<Action> for Result<Action> {
     fn from(r: Action) -> Self {
@@ -100,8 +106,10 @@ struct Playing {
     lines: Vec<MyLine>,
     angle: f32,
     player: Player,
+    landscape: Vec<Line>,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
+    rng: ThreadRng,
 }
 
 impl Playing {
@@ -111,6 +119,13 @@ impl Playing {
             MyLine::new((16, 16), (0, -16), Color::GREEN),
             MyLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
+        let mut landscape = Vec::new();
+        let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT/16);
+        for x in (0..WINDOW_WIDTH + 32).step_by(32) {
+            let next_point = Vector::new(x, last_point.y);
+            landscape.push(Line::new(last_point, next_point));
+            last_point = next_point;
+        }
         Ok(Self {
             line_images,
             lines,
@@ -118,8 +133,10 @@ impl Playing {
             player: Player {
                 pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 4),
             },
+            landscape: landscape,
             gilrs: Gilrs::new()?,
             active_gamepad: None,
+            rng: rand::thread_rng(),
         })
     }
 
@@ -142,20 +159,37 @@ impl Playing {
         self.draw_lines(transform, self.lines.iter(), window);
     }
 
-    fn draw_grid(&self, window: &mut Window) {
-        //  We can draw lines whose "background" is an image, or even an image blended with a
-        // colour as shown here, which is promising for doing glowy lines.
-        let image = &self.line_images[0];
-        for x in (0..=VIRTUAL_WIDTH).step_by(VIRTUAL_HEIGHT as usize / 8) {
-            window.draw(
-                &Line::new((x, VIRTUAL_HEIGHT / 2), (x, VIRTUAL_HEIGHT)).with_thickness(16.0),
-                Blended(&image, Color::YELLOW.with_alpha(0.75)),
-            );
+    fn update_landscape(&mut self) {
+        for line in self.landscape.iter_mut() {
+            *line = line.translate((-4.0, 0.0));
         }
-        for y in (VIRTUAL_HEIGHT / 2..=VIRTUAL_HEIGHT).step_by(VIRTUAL_HEIGHT as usize / 8) {
+
+        // We need to add a new line to our landscape if the rightmost point of the rightmost line
+        // is about to become visible.
+        // TODO: actually, we need to have one more to account for placing things on the landscape.
+        let b = self.landscape[self.landscape.len() - 1].b;
+        if b.x < 32.0 + WINDOW_WIDTH as f32 {
+            let mut new_y = b.y + self.rng.gen_range(-64.0, 64.0);
+            while new_y >= WINDOW_HEIGHT as f32 || new_y < WINDOW_HEIGHT as f32 / 4.0 - 8.0 {
+                new_y = b.y + self.rng.gen_range(-64.0, 64.0);
+            }
+            let next_point = Vector::new(b.x + 32.0, new_y);
+            self.landscape.push(Line::new(b, next_point));
+        }
+
+        // We need to remove the leftmost line from the landscape if it is no longer visible.
+        let a = self.landscape[0].b;
+        if a.x < 0.0 {
+            self.landscape.remove(0);
+        }
+    }
+
+    fn draw_landscape(&self, window: &mut Window) {
+        let image = &self.line_images[0];
+        for line in &self.landscape {
             window.draw(
-                &Line::new((0, y), (VIRTUAL_WIDTH, y)).with_thickness(16.0),
-                Blended(&image, Color::YELLOW.with_alpha(0.75)),
+                &line.with_thickness(16.0),
+                Blended(&image, Color::GREEN.with_alpha(0.75)),
             );
         }
     }
@@ -223,13 +257,15 @@ impl GameState for Playing {
         };
         self.angle += d_theta * 4.0;
 
+        self.update_landscape();
+
         let result = if quit { Quit } else { Continue };
         result.into()
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         window.set_blend_mode(BlendMode::Additive)?;
-        self.draw_grid(window);
+        self.draw_landscape(window);
         self.draw_player(window);
 
         Ok(())
