@@ -74,9 +74,14 @@ impl GameState for Loading {
 
 struct Player {
     pos: Vector,
+    angle: f32,
 }
 
 impl Player {
+    fn new(pos: Vector, angle: f32) -> Self {
+        Player { pos, angle }
+    }
+
     fn move_by(&mut self, dv: Vector) {
         self.pos += dv;
     }
@@ -153,12 +158,20 @@ impl Landscape {
             self.landscape.remove(0);
         }
     }
+
+    fn draw(&self, window: &mut Window, image: &Image) {
+        for line in &self.landscape {
+            window.draw(
+                &line.with_thickness(16.0),
+                Blended(&image, Color::GREEN.with_alpha(0.75)),
+            );
+        }
+    }
 }
 
 struct Playing {
     line_images: Vec<Image>,
     lines: Vec<MyLine>,
-    angle: f32,
     player: Player,
     landscape: Landscape,
     gilrs: Gilrs,
@@ -182,10 +195,7 @@ impl Playing {
         Ok(Self {
             line_images,
             lines,
-            angle: 0.0,
-            player: Player {
-                pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 4),
-            },
+            player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
             landscape: Landscape::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
@@ -207,18 +217,9 @@ impl Playing {
     }
 
     fn draw_player(&self, window: &mut Window) {
-        let transform = Transform::translate(self.player.pos) * Transform::rotate(self.angle);
+        let transform =
+            Transform::translate(self.player.pos) * Transform::rotate(self.player.angle);
         self.draw_lines(transform, self.lines.iter(), window);
-    }
-
-    fn draw_landscape(&self, window: &mut Window) {
-        let image = &self.line_images[0];
-        for line in &self.landscape.landscape {
-            window.draw(
-                &line.with_thickness(16.0),
-                Blended(&image, Color::GREEN.with_alpha(0.75)),
-            );
-        }
     }
 }
 
@@ -282,7 +283,7 @@ impl GameState for Playing {
             (false, true) => 1.0,
             _ => 0.0,
         };
-        self.angle += d_theta * 4.0;
+        self.player.angle += d_theta * 4.0;
 
         self.landscape.update();
 
@@ -292,7 +293,8 @@ impl GameState for Playing {
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         window.set_blend_mode(BlendMode::Additive)?;
-        self.draw_landscape(window);
+        let image = &self.line_images[0];
+        self.landscape.draw(window, image);
         self.draw_player(window);
 
         Ok(())
