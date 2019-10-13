@@ -15,10 +15,7 @@ use quicksilver::{
 
 use gilrs::{Button, GamepadId, Gilrs};
 
-use rand::{
-    Rng,
-    prelude::*,
-};
+use rand::{prelude::*, Rng};
 
 enum Action {
     Quit,                           // Stop the entire state machine (or game).
@@ -28,8 +25,8 @@ enum Action {
 
 use quicksilver::geom::Transform;
 use quicksilver::graphics::BlendMode;
-use Action::{Continue, Quit, Transition};
 use quicksilver::prelude::Shape;
+use Action::{Continue, Quit, Transition};
 
 impl From<Action> for Result<Action> {
     fn from(r: Action) -> Self {
@@ -101,15 +98,71 @@ impl MyLine {
     }
 }
 
+const LANDSCAPE_MIN_Y: f32 = VIRTUAL_HEIGHT as f32 / 4.0;
+const LANDSCAPE_MAX_Y: f32 = VIRTUAL_HEIGHT as f32 - 8.0;
+const LANDSCAPE_MAX_DY: f32 = 80.0;
+const LANDSCAPE_STEP: f32 = 16.0;
+
+struct Landscape {
+    landscape: Vec<Line>,
+    rng: ThreadRng,
+}
+
+impl Landscape {
+    fn new() -> Self {
+        let mut landscape = Vec::new();
+        let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
+        let mut x = 0.0;
+        while x <= WINDOW_WIDTH as f32 + LANDSCAPE_STEP {
+            let next_point = Vector::new(x, last_point.y);
+            landscape.push(Line::new(last_point, next_point));
+            last_point = next_point;
+            x += LANDSCAPE_STEP;
+        }
+        Landscape {
+            landscape,
+            rng: rand::thread_rng(),
+        }
+    }
+
+    fn update(&mut self) {
+        for line in self.landscape.iter_mut() {
+            *line = line.translate((-4.0, 0.0));
+        }
+
+        // We need to add a new line to our landscape if the rightmost point of the rightmost line
+        // is about to become visible.
+        let b = self.landscape[self.landscape.len() - 1].b;
+        if b.x < LANDSCAPE_STEP + WINDOW_WIDTH as f32 {
+            let new_y = if self.rng.gen_range(0, 100) >= 25 {
+                let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
+                while new_y > LANDSCAPE_MAX_Y || new_y < LANDSCAPE_MIN_Y {
+                    new_y = b.y + self.rng.gen_range(-64.0, 64.0);
+                }
+                new_y
+            } else {
+                b.y
+            };
+            let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
+            self.landscape.push(Line::new(b, next_point));
+        }
+
+        // We need to remove the leftmost line from the landscape if it is no longer visible.
+        let a = &self.landscape[0].b;
+        if a.x < 0.0 {
+            self.landscape.remove(0);
+        }
+    }
+}
+
 struct Playing {
     line_images: Vec<Image>,
     lines: Vec<MyLine>,
     angle: f32,
     player: Player,
-    landscape: Vec<Line>,
+    landscape: Landscape,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
-    rng: ThreadRng,
 }
 
 impl Playing {
@@ -120,7 +173,7 @@ impl Playing {
             MyLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
         let mut landscape = Vec::new();
-        let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT/16);
+        let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
             let next_point = Vector::new(x, last_point.y);
             landscape.push(Line::new(last_point, next_point));
@@ -133,10 +186,9 @@ impl Playing {
             player: Player {
                 pos: Vector::new(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 4),
             },
-            landscape: landscape,
+            landscape: Landscape::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
-            rng: rand::thread_rng(),
         })
     }
 
@@ -159,34 +211,9 @@ impl Playing {
         self.draw_lines(transform, self.lines.iter(), window);
     }
 
-    fn update_landscape(&mut self) {
-        for line in self.landscape.iter_mut() {
-            *line = line.translate((-4.0, 0.0));
-        }
-
-        // We need to add a new line to our landscape if the rightmost point of the rightmost line
-        // is about to become visible.
-        // TODO: actually, we need to have one more to account for placing things on the landscape.
-        let b = self.landscape[self.landscape.len() - 1].b;
-        if b.x < 32.0 + WINDOW_WIDTH as f32 {
-            let mut new_y = b.y + self.rng.gen_range(-64.0, 64.0);
-            while new_y >= WINDOW_HEIGHT as f32 || new_y < WINDOW_HEIGHT as f32 / 4.0 - 8.0 {
-                new_y = b.y + self.rng.gen_range(-64.0, 64.0);
-            }
-            let next_point = Vector::new(b.x + 32.0, new_y);
-            self.landscape.push(Line::new(b, next_point));
-        }
-
-        // We need to remove the leftmost line from the landscape if it is no longer visible.
-        let a = self.landscape[0].b;
-        if a.x < 0.0 {
-            self.landscape.remove(0);
-        }
-    }
-
     fn draw_landscape(&self, window: &mut Window) {
         let image = &self.line_images[0];
-        for line in &self.landscape {
+        for line in &self.landscape.landscape {
             window.draw(
                 &line.with_thickness(16.0),
                 Blended(&image, Color::GREEN.with_alpha(0.75)),
@@ -257,7 +284,7 @@ impl GameState for Playing {
         };
         self.angle += d_theta * 4.0;
 
-        self.update_landscape();
+        self.landscape.update();
 
         let result = if quit { Quit } else { Continue };
         result.into()
@@ -315,11 +342,11 @@ impl State for Game {
 }
 
 fn main() {
-    let fps = 60.0;
-    let update_rate_ms = 1000.0 / fps;
+    let fixed_update_hz = 60.0;
+    let fixed_update_interval_ms = 1000.0 / fixed_update_hz;
     let settings = Settings {
         scale: ImageScaleStrategy::Blur,
-        update_rate: update_rate_ms,
+        update_rate: fixed_update_interval_ms,
         ..Settings::default()
     };
     run::<Game>(
