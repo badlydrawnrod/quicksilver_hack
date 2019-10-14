@@ -72,21 +72,7 @@ impl GameState for Loading {
     }
 }
 
-struct Player {
-    pos: Vector,
-    angle: f32,
-}
-
-impl Player {
-    fn new(pos: Vector, angle: f32) -> Self {
-        Player { pos, angle }
-    }
-
-    fn move_by(&mut self, dv: Vector) {
-        self.pos += dv;
-    }
-}
-
+#[derive(Copy, Clone)]
 struct MyLine {
     start: Vector,
     end: Vector,
@@ -103,13 +89,73 @@ impl MyLine {
     }
 }
 
+// TODO: surely this should just be a mesh, or at least wrap one.
+struct LineRenderer {
+    image: Image,
+    lines: Vec<MyLine>,
+}
+
+impl LineRenderer {
+    fn new(image: Image) -> Self {
+        LineRenderer {
+            image,
+            lines: Vec::with_capacity(256),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.lines.clear();
+    }
+
+    fn extend<'a>(&mut self, transform: Transform, more_lines: impl Iterator<Item = &'a MyLine>) {
+        let transformed_lines = more_lines
+            .map(|line| MyLine::new(transform * line.start, transform * line.end, line.colour));
+        self.lines.extend(transformed_lines);
+    }
+
+    fn render(&self, window: &mut Window) {
+        for line in &self.lines {
+            window.draw(
+                &Line::new(line.start, line.end).with_thickness(16.0),
+                Blended(&self.image, line.colour.with_alpha(0.75)),
+            );
+        }
+    }
+}
+
+struct Player {
+    pos: Vector,
+    angle: f32,
+    lines: Vec<MyLine>,
+}
+
+impl Player {
+    fn new(pos: Vector, angle: f32) -> Self {
+        let lines = vec![
+            MyLine::new((-16, 16), (16, 16), Color::CYAN),
+            MyLine::new((16, 16), (0, -16), Color::GREEN),
+            MyLine::new((0, -16), (-16, 16), Color::GREEN),
+        ];
+        Player { pos, angle, lines }
+    }
+
+    fn move_by(&mut self, dv: Vector) {
+        self.pos += dv;
+    }
+
+    fn draw(&self, line_renderer: &mut LineRenderer) {
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        line_renderer.extend(transform, self.lines.iter());
+    }
+}
+
 const LANDSCAPE_MIN_Y: f32 = VIRTUAL_HEIGHT as f32 / 4.0;
 const LANDSCAPE_MAX_Y: f32 = VIRTUAL_HEIGHT as f32 - 8.0;
 const LANDSCAPE_MAX_DY: f32 = 80.0;
 const LANDSCAPE_STEP: f32 = 16.0;
 
 struct Landscape {
-    landscape: Vec<Line>,
+    landscape: Vec<MyLine>,
     rng: ThreadRng,
 }
 
@@ -120,7 +166,7 @@ impl Landscape {
         let mut x = 0.0;
         while x <= WINDOW_WIDTH as f32 + LANDSCAPE_STEP {
             let next_point = Vector::new(x, last_point.y);
-            landscape.push(Line::new(last_point, next_point));
+            landscape.push(MyLine::new(last_point, next_point, Color::GREEN));
             last_point = next_point;
             x += LANDSCAPE_STEP;
         }
@@ -132,12 +178,14 @@ impl Landscape {
 
     fn update(&mut self) {
         for line in self.landscape.iter_mut() {
-            *line = line.translate((-4.0, 0.0));
+            line.start = line.start.translate((-4.0, 0.0));
+            line.end = line.end.translate((-4.0, 0.0));
+            //            *line = line.translate((-4.0, 0.0));
         }
 
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
-        let b = self.landscape[self.landscape.len() - 1].b;
+        let b = self.landscape[self.landscape.len() - 1].end;
         if b.x < LANDSCAPE_STEP + WINDOW_WIDTH as f32 {
             let new_y = if self.rng.gen_range(0, 100) >= 25 {
                 let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
@@ -149,29 +197,24 @@ impl Landscape {
                 b.y
             };
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
-            self.landscape.push(Line::new(b, next_point));
+            self.landscape
+                .push(MyLine::new(b, next_point, Color::GREEN));
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
-        let a = &self.landscape[0].b;
+        let a = &self.landscape[0].end;
         if a.x < 0.0 {
             self.landscape.remove(0);
         }
     }
 
-    fn draw(&self, window: &mut Window, image: &Image) {
-        for line in &self.landscape {
-            window.draw(
-                &line.with_thickness(16.0),
-                Blended(&image, Color::GREEN.with_alpha(0.75)),
-            );
-        }
+    fn draw(&self, line_renderer: &mut LineRenderer) {
+        line_renderer.extend(Transform::IDENTITY, self.landscape.iter());
     }
 }
 
 struct Playing {
-    line_images: Vec<Image>,
-    lines: Vec<MyLine>,
+    line_renderer: LineRenderer,
     player: Player,
     landscape: Landscape,
     gilrs: Gilrs,
@@ -180,11 +223,6 @@ struct Playing {
 
 impl Playing {
     fn new(line_images: Vec<Image>) -> Result<Self> {
-        let lines = vec![
-            MyLine::new((-16, 16), (16, 16), Color::CYAN),
-            MyLine::new((16, 16), (0, -16), Color::GREEN),
-            MyLine::new((0, -16), (-16, 16), Color::GREEN),
-        ];
         let mut landscape = Vec::new();
         let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
@@ -193,33 +231,12 @@ impl Playing {
             last_point = next_point;
         }
         Ok(Self {
-            line_images,
-            lines,
+            line_renderer: LineRenderer::new(line_images[0].clone()),
             player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
             landscape: Landscape::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
-    }
-
-    fn draw_lines<'a>(
-        &self,
-        transform: Transform,
-        lines: impl Iterator<Item = &'a MyLine>,
-        window: &mut Window,
-    ) {
-        let image = &self.line_images[0];
-        for my_line in lines {
-            let line =
-                Line::new(transform * my_line.start, transform * my_line.end).with_thickness(16.0);
-            window.draw(&line, Blended(&image, my_line.colour.with_alpha(0.75)));
-        }
-    }
-
-    fn draw_player(&self, window: &mut Window) {
-        let transform =
-            Transform::translate(self.player.pos) * Transform::rotate(self.player.angle);
-        self.draw_lines(transform, self.lines.iter(), window);
     }
 }
 
@@ -293,9 +310,10 @@ impl GameState for Playing {
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         window.set_blend_mode(BlendMode::Additive)?;
-        let image = &self.line_images[0];
-        self.landscape.draw(window, image);
-        self.draw_player(window);
+        self.line_renderer.clear();
+        self.landscape.draw(&mut self.line_renderer);
+        self.player.draw(&mut self.line_renderer);
+        self.line_renderer.render(window);
 
         Ok(())
     }
