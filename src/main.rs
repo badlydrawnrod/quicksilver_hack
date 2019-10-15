@@ -17,16 +17,17 @@ use gilrs::{Button, GamepadId, Gilrs};
 
 use rand::{prelude::*, Rng};
 
+use quicksilver::geom::Transform;
+use quicksilver::graphics::{BlendMode, Drawable, Mesh};
+use quicksilver::prelude::{Background, Shape};
+use std::borrow::{Borrow, BorrowMut};
+use Action::{Continue, Quit, Transition};
+
 enum Action {
     Quit,                           // Stop the entire state machine (or game).
     Continue,                       // Continue in the current state.
     Transition(Box<dyn GameState>), // Switch to the new state.
 }
-
-use quicksilver::geom::Transform;
-use quicksilver::graphics::BlendMode;
-use quicksilver::prelude::Shape;
-use Action::{Continue, Quit, Transition};
 
 impl From<Action> for Result<Action> {
     fn from(r: Action) -> Self {
@@ -74,52 +75,49 @@ impl GameState for Loading {
 
 #[derive(Copy, Clone)]
 struct MyLine {
-    start: Vector,
-    end: Vector,
+    line: Line,
     colour: Color,
 }
 
 impl MyLine {
     fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
         MyLine {
-            start: start.into(),
-            end: end.into(),
+            line: Line::new(start, end),
             colour: colour.into(),
         }
     }
 }
 
-// TODO: surely this should just be a mesh, or at least wrap one.
 struct LineRenderer {
     image: Image,
-    lines: Vec<MyLine>,
+    mesh: Mesh,
 }
 
 impl LineRenderer {
     fn new(image: Image) -> Self {
         LineRenderer {
             image,
-            lines: Vec::with_capacity(256),
+            mesh: Mesh::new(),
         }
     }
 
     fn clear(&mut self) {
-        self.lines.clear();
+        self.mesh.clear();
     }
 
     fn extend<'a>(&mut self, transform: Transform, more_lines: impl Iterator<Item = &'a MyLine>) {
-        let transformed_lines = more_lines
-            .map(|line| MyLine::new(transform * line.start, transform * line.end, line.colour));
-        self.lines.extend(transformed_lines);
+        for line in more_lines {
+            line.line.with_thickness(16.0).draw(
+                self.mesh.borrow_mut(),
+                Blended(&self.image, line.colour.with_alpha(0.75)),
+                transform,
+                0.0,
+            );
+        }
     }
 
     fn render(&self, window: &mut Window) {
-        for line in &self.lines {
-            window.draw(
-                &Line::new(line.start, line.end).with_thickness(16.0),
-                Blended(&self.image, line.colour.with_alpha(0.75)),
-            );
-        }
+        window.mesh().extend(&self.mesh);
     }
 }
 
@@ -144,8 +142,13 @@ impl Player {
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        line_renderer.extend(transform, self.lines.iter());
+        let rotate = Transform::rotate(self.angle);
+        let rotated = self
+            .lines
+            .iter()
+            .map(|line| MyLine::new(rotate * line.line.a, rotate * line.line.b, line.colour));
+        let transform = Transform::translate(self.pos);
+        line_renderer.extend(transform, rotated.collect::<Vec<_>>().iter());
     }
 }
 
@@ -178,14 +181,12 @@ impl Landscape {
 
     fn update(&mut self) {
         for line in self.landscape.iter_mut() {
-            line.start = line.start.translate((-4.0, 0.0));
-            line.end = line.end.translate((-4.0, 0.0));
-            //            *line = line.translate((-4.0, 0.0));
+            line.line = line.line.translate((-4.0, 0.0));
         }
 
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
-        let b = self.landscape[self.landscape.len() - 1].end;
+        let b = self.landscape[self.landscape.len() - 1].line.b;
         if b.x < LANDSCAPE_STEP + WINDOW_WIDTH as f32 {
             let new_y = if self.rng.gen_range(0, 100) >= 25 {
                 let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
@@ -202,7 +203,7 @@ impl Landscape {
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
-        let a = &self.landscape[0].end;
+        let a = &self.landscape[0].line.b;
         if a.x < 0.0 {
             self.landscape.remove(0);
         }
