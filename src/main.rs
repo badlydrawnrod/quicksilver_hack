@@ -4,10 +4,13 @@ const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
 const VIRTUAL_WIDTH: u32 = WINDOW_WIDTH;
 const VIRTUAL_HEIGHT: u32 = WINDOW_HEIGHT;
+const LINE_THICKNESS: f32 = 8.0;
 
 use quicksilver::{
-    geom::{Line, Rectangle, Vector},
-    graphics::{Background::Blended, Color, Image, ImageScaleStrategy, View},
+    geom::{Line, Rectangle, Shape, Transform, Vector},
+    graphics::{
+        Background::Blended, BlendMode, Color, Drawable, Image, ImageScaleStrategy, Mesh, View,
+    },
     input::Key,
     lifecycle::{run, Asset, Settings, State, Window},
     Result,
@@ -17,10 +20,7 @@ use gilrs::{Button, GamepadId, Gilrs};
 
 use rand::{prelude::*, Rng};
 
-use quicksilver::geom::Transform;
-use quicksilver::graphics::{BlendMode, Drawable, Mesh};
-use quicksilver::prelude::{Background, Shape};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::BorrowMut;
 use Action::{Continue, Quit, Transition};
 
 enum Action {
@@ -105,9 +105,17 @@ impl LineRenderer {
         self.mesh.clear();
     }
 
-    fn extend<'a>(&mut self, transform: Transform, more_lines: impl Iterator<Item = &'a MyLine>) {
-        for line in more_lines {
-            line.line.with_thickness(16.0).draw(
+    fn extend<'a>(
+        &mut self,
+        transform: Transform,
+        angle: f32,
+        lines: impl Iterator<Item = &'a MyLine>,
+    ) {
+        let rotate = Transform::rotate(angle);
+        for line in lines {
+            let rotated_line =
+                Line::new(rotate * line.line.a, rotate * line.line.b).with_thickness(LINE_THICKNESS);
+            rotated_line.draw(
                 self.mesh.borrow_mut(),
                 Blended(&self.image, line.colour.with_alpha(0.75)),
                 transform,
@@ -142,13 +150,8 @@ impl Player {
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        let rotate = Transform::rotate(self.angle);
-        let rotated = self
-            .lines
-            .iter()
-            .map(|line| MyLine::new(rotate * line.line.a, rotate * line.line.b, line.colour));
         let transform = Transform::translate(self.pos);
-        line_renderer.extend(transform, rotated.collect::<Vec<_>>().iter());
+        line_renderer.extend(transform, self.angle, self.lines.iter());
     }
 }
 
@@ -165,9 +168,9 @@ struct Landscape {
 impl Landscape {
     fn new() -> Self {
         let mut landscape = Vec::new();
-        let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
+        let mut last_point = Vector::new(0.0, 15 * VIRTUAL_HEIGHT / 16);
         let mut x = 0.0;
-        while x <= WINDOW_WIDTH as f32 + LANDSCAPE_STEP {
+        while x <= VIRTUAL_WIDTH as f32 + LANDSCAPE_STEP {
             let next_point = Vector::new(x, last_point.y);
             landscape.push(MyLine::new(last_point, next_point, Color::GREEN));
             last_point = next_point;
@@ -187,7 +190,7 @@ impl Landscape {
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
         let b = self.landscape[self.landscape.len() - 1].line.b;
-        if b.x < LANDSCAPE_STEP + WINDOW_WIDTH as f32 {
+        if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 {
             let new_y = if self.rng.gen_range(0, 100) >= 25 {
                 let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
                 while new_y > LANDSCAPE_MAX_Y || new_y < LANDSCAPE_MIN_Y {
@@ -210,7 +213,7 @@ impl Landscape {
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.extend(Transform::IDENTITY, self.landscape.iter());
+        line_renderer.extend(Transform::IDENTITY, 0.0, self.landscape.iter());
     }
 }
 
