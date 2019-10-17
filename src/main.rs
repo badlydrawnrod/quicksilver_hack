@@ -113,12 +113,24 @@ impl LineRenderer {
     ) {
         let rotate = Transform::rotate(angle);
         for line in lines {
-            let rotated_line =
-                Line::new(rotate * line.line.a, rotate * line.line.b).with_thickness(LINE_THICKNESS);
+            let rotated_line = Line::new(rotate * line.line.a, rotate * line.line.b)
+                .with_thickness(LINE_THICKNESS);
             rotated_line.draw(
                 self.mesh.borrow_mut(),
                 Blended(&self.image, line.colour.with_alpha(0.75)),
                 transform,
+                0.0,
+            );
+        }
+    }
+
+    fn hack<'a>(&mut self, lines: impl Iterator<Item = &'a Line>) {
+        for line in lines {
+            let rotated_line = line.with_thickness(LINE_THICKNESS);
+            rotated_line.draw(
+                self.mesh.borrow_mut(),
+                Blended(&self.image, Color::GREEN),
+                Transform::IDENTITY,
                 0.0,
             );
         }
@@ -133,6 +145,7 @@ struct Player {
     pos: Vector,
     angle: f32,
     lines: Vec<MyLine>,
+    collision_lines: Vec<Line>,
 }
 
 impl Player {
@@ -142,16 +155,41 @@ impl Player {
             MyLine::new((16, 16), (0, -16), Color::GREEN),
             MyLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
-        Player { pos, angle, lines }
+        let length = lines.len();
+        Player {
+            pos,
+            angle,
+            lines,
+            collision_lines: Vec::with_capacity(length),
+        }
     }
 
-    fn move_by(&mut self, dv: Vector) {
-        self.pos += dv;
+    fn control(&mut self, dx: f32, dy: f32, d_theta: f32) {
+        // Update the position.
+        if dx != 0.0 || dy != 0.0 {
+            let movement = Vector::new(dx * 2.0, dy * 2.0);
+            self.pos += movement;
+        }
+
+        // Update the rotation.
+        if d_theta != 0.0 {
+            self.angle += d_theta * 4.0;
+        }
+
+        // Update the collision lines from the original model.
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        self.collision_lines.clear();
+        self.collision_lines.extend(
+            self.lines
+                .iter()
+                .map(|line| Line::new(transform * line.line.a, transform * line.line.b)),
+        );
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
         let transform = Transform::translate(self.pos);
-        line_renderer.extend(transform, self.angle, self.lines.iter());
+        //line_renderer.extend(transform, self.angle, self.lines.iter());
+        line_renderer.hack(self.collision_lines.iter());
     }
 }
 
@@ -293,19 +331,13 @@ impl GameState for Playing {
             (false, true) => 1.0,
             _ => 0.0,
         };
-
-        if dx != 0.0 || dy != 0.0 {
-            let movement = Vector::new(dx * 2.0, dy * 2.0);
-            self.player.move_by(movement);
-        }
-
         let d_theta = match (rotate_anticlockwise, rotate_clockwise) {
             (true, false) => -1.0,
             (false, true) => 1.0,
             _ => 0.0,
         };
-        self.player.angle += d_theta * 4.0;
 
+        self.player.control(dx, dy, d_theta);
         self.landscape.update();
 
         let result = if quit { Quit } else { Continue };
