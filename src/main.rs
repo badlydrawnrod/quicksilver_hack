@@ -325,6 +325,16 @@ impl GameState for Playing {
         self.player.control(dx, dy, d_theta);
         self.landscape.update();
 
+        // Collide the player with the landscape.
+        'kaboom: for line_a in &self.landscape.landscape {
+            for line_b in &self.player.transformed_lines {
+                if line_a.line.intersects(&line_b.line) {
+                    println!("Kaboom!!!");
+                    break 'kaboom;
+                }
+            }
+        }
+
         let result = if quit { Quit } else { Continue };
         result.into()
     }
