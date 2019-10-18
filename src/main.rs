@@ -74,17 +74,25 @@ impl GameState for Loading {
 }
 
 #[derive(Copy, Clone)]
-struct MyLine {
+struct TintedLine {
     line: Line,
     colour: Color,
 }
 
-impl MyLine {
+impl TintedLine {
     fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
-        MyLine {
+        TintedLine {
             line: Line::new(start, end),
             colour: colour.into(),
         }
+    }
+
+    fn transformed(self, transform: Transform) -> Self {
+        TintedLine::new(
+            transform * self.line.a,
+            transform * self.line.b,
+            self.colour,
+        )
     }
 }
 
@@ -105,32 +113,14 @@ impl LineRenderer {
         self.mesh.clear();
     }
 
-    fn extend<'a>(
-        &mut self,
-        transform: Transform,
-        angle: f32,
-        lines: impl Iterator<Item = &'a MyLine>,
-    ) {
-        let rotate = Transform::rotate(angle);
-        for line in lines {
-            let rotated_line = Line::new(rotate * line.line.a, rotate * line.line.b)
-                .with_thickness(LINE_THICKNESS);
-            rotated_line.draw(
+    fn add_lines<'a>(&mut self, lines: impl Iterator<Item = &'a TintedLine>) {
+        let identity = Transform::IDENTITY;
+        for tinted_line in lines {
+            let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
+            thick_line.draw(
                 self.mesh.borrow_mut(),
-                Blended(&self.image, line.colour.with_alpha(0.75)),
-                transform,
-                0.0,
-            );
-        }
-    }
-
-    fn hack<'a>(&mut self, lines: impl Iterator<Item = &'a Line>) {
-        for line in lines {
-            let rotated_line = line.with_thickness(LINE_THICKNESS);
-            rotated_line.draw(
-                self.mesh.borrow_mut(),
-                Blended(&self.image, Color::GREEN),
-                Transform::IDENTITY,
+                Blended(&self.image, tinted_line.colour),
+                identity,
                 0.0,
             );
         }
@@ -144,23 +134,23 @@ impl LineRenderer {
 struct Player {
     pos: Vector,
     angle: f32,
-    lines: Vec<MyLine>,
-    collision_lines: Vec<Line>,
+    model_lines: Vec<TintedLine>,
+    transformed_lines: Vec<TintedLine>,
 }
 
 impl Player {
     fn new(pos: Vector, angle: f32) -> Self {
         let lines = vec![
-            MyLine::new((-16, 16), (16, 16), Color::CYAN),
-            MyLine::new((16, 16), (0, -16), Color::GREEN),
-            MyLine::new((0, -16), (-16, 16), Color::GREEN),
+            TintedLine::new((-16, 16), (16, 16), Color::CYAN),
+            TintedLine::new((16, 16), (0, -16), Color::GREEN),
+            TintedLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
         let length = lines.len();
         Player {
             pos,
             angle,
-            lines,
-            collision_lines: Vec::with_capacity(length),
+            model_lines: lines,
+            transformed_lines: Vec::with_capacity(length),
         }
     }
 
@@ -176,20 +166,15 @@ impl Player {
             self.angle += d_theta * 4.0;
         }
 
-        // Update the collision lines from the original model.
+        // Update the transformed model from the original model.
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        self.collision_lines.clear();
-        self.collision_lines.extend(
-            self.lines
-                .iter()
-                .map(|line| Line::new(transform * line.line.a, transform * line.line.b)),
-        );
+        self.transformed_lines.clear();
+        self.transformed_lines
+            .extend(self.model_lines.iter().map(|line| line.transformed(transform)));
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        let transform = Transform::translate(self.pos);
-        //line_renderer.extend(transform, self.angle, self.lines.iter());
-        line_renderer.hack(self.collision_lines.iter());
+        line_renderer.add_lines(self.transformed_lines.iter());
     }
 }
 
@@ -199,7 +184,7 @@ const LANDSCAPE_MAX_DY: f32 = 80.0;
 const LANDSCAPE_STEP: f32 = 16.0;
 
 struct Landscape {
-    landscape: Vec<MyLine>,
+    landscape: Vec<TintedLine>,
     rng: ThreadRng,
 }
 
@@ -210,7 +195,7 @@ impl Landscape {
         let mut x = 0.0;
         while x <= VIRTUAL_WIDTH as f32 + LANDSCAPE_STEP {
             let next_point = Vector::new(x, last_point.y);
-            landscape.push(MyLine::new(last_point, next_point, Color::GREEN));
+            landscape.push(TintedLine::new(last_point, next_point, Color::GREEN));
             last_point = next_point;
             x += LANDSCAPE_STEP;
         }
@@ -240,7 +225,7 @@ impl Landscape {
             };
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
             self.landscape
-                .push(MyLine::new(b, next_point, Color::GREEN));
+                .push(TintedLine::new(b, next_point, Color::GREEN));
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
@@ -251,7 +236,7 @@ impl Landscape {
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.extend(Transform::IDENTITY, 0.0, self.landscape.iter());
+        line_renderer.add_lines(self.landscape.iter());
     }
 }
 
