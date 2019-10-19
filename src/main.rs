@@ -133,6 +133,48 @@ impl LineRenderer {
     }
 }
 
+struct Shot {
+    pos: Vector,
+    angle: f32,
+    velocity: Vector,
+    model_lines: Vec<TintedLine>,
+    transformed_lines: Vec<TintedLine>,
+}
+
+impl Shot {
+    fn new(pos: Vector, angle: f32) -> Self {
+        let lines = vec![
+            TintedLine::new((-4, 4), (4, 4), Color::RED),
+            TintedLine::new((4, 4), (0, -4), Color::RED),
+            TintedLine::new((0, -4), (-4, 4), Color::RED),
+        ];
+        let length = lines.len();
+        Shot {
+            pos,
+            angle,
+            velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
+            model_lines: lines,
+            transformed_lines: Vec::with_capacity(length),
+        }
+    }
+
+    fn control(&mut self) {
+        self.pos += self.velocity;
+
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        self.transformed_lines.clear();
+        self.transformed_lines.extend(
+            self.model_lines
+                .iter()
+                .map(|line| line.transformed(transform)),
+        );
+    }
+
+    fn draw(&self, line_renderer: &mut LineRenderer) {
+        line_renderer.add_lines(self.transformed_lines.iter());
+    }
+}
+
 struct Player {
     pos: Vector,
     angle: f32,
@@ -249,6 +291,7 @@ struct Playing {
     line_renderer: LineRenderer,
     player: Player,
     landscape: Landscape,
+    shots: Vec<Shot>,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
@@ -266,6 +309,7 @@ impl Playing {
             line_renderer: LineRenderer::new(line_images[0].clone()),
             player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
             landscape: Landscape::new(),
+            shots: Vec::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
@@ -319,7 +363,9 @@ impl GameState for Playing {
         fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
 
         if fire {
-            println!("Fire!");
+            println!("Fire");
+            let shot = Shot::new(self.player.pos, self.player.angle);
+            self.shots.push(shot);
         }
 
         let dx = match (left_pressed, right_pressed) {
@@ -340,6 +386,9 @@ impl GameState for Playing {
 
         self.player.control(dx, dy, d_theta);
         self.landscape.update();
+        for shot in &mut self.shots {
+            shot.control();
+        }
 
         // Collide the player with the landscape.
         'kaboom: for line_a in &self.landscape.landscape {
@@ -360,6 +409,9 @@ impl GameState for Playing {
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
         self.player.draw(&mut self.line_renderer);
+        for shot in &self.shots {
+            shot.draw(&mut self.line_renderer);
+        }
         self.line_renderer.render(window);
 
         Ok(())
