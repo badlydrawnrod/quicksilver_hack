@@ -11,12 +11,12 @@ use quicksilver::{
     graphics::{
         Background::Blended, BlendMode, Color, Drawable, Image, ImageScaleStrategy, Mesh, View,
     },
-    input::Key,
+    input::{ButtonState, Key},
     lifecycle::{run, Asset, Settings, State, Window},
     Result,
 };
 
-use gilrs::{Button, GamepadId, Gilrs};
+use gilrs::{Button, EventType, GamepadId, Gilrs};
 
 use rand::{prelude::*, Rng};
 
@@ -24,8 +24,10 @@ use std::borrow::BorrowMut;
 use Action::{Continue, Quit, Transition};
 
 enum Action {
-    Quit,                           // Stop the entire state machine (or game).
-    Continue,                       // Continue in the current state.
+    Quit,
+    // Stop the entire state machine (or game).
+    Continue,
+    // Continue in the current state.
     Transition(Box<dyn GameState>), // Switch to the new state.
 }
 
@@ -169,8 +171,11 @@ impl Player {
         // Update the transformed model from the original model.
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.transformed_lines.clear();
-        self.transformed_lines
-            .extend(self.model_lines.iter().map(|line| line.transformed(transform)));
+        self.transformed_lines.extend(
+            self.model_lines
+                .iter()
+                .map(|line| line.transformed(transform)),
+        );
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
@@ -276,6 +281,7 @@ impl GameState for Playing {
         let mut down_pressed = false;
         let mut rotate_anticlockwise = false;
         let mut rotate_clockwise = false;
+        let mut fire: bool = false;
 
         // Use GilRs directly, because Quicksilver doesn't see some of the buttons.
 
@@ -285,6 +291,11 @@ impl GameState for Playing {
                 // If we don't have an active gamepad yet, then we do now.
                 self.active_gamepad = Some(event.id);
             }
+            match event.event {
+                EventType::ButtonPressed(Button::South, _) => fire = true,
+                EventType::ButtonReleased(Button::Start, _) => quit = true,
+                _ => (),
+            };
         }
 
         // Check the player's gamepad.
@@ -298,13 +309,18 @@ impl GameState for Playing {
         }
 
         // Check the keyboard.
-        quit = quit || window.keyboard()[Key::Escape].is_down();
+        quit = quit || window.keyboard()[Key::Escape] == ButtonState::Released;
         right_pressed = right_pressed || window.keyboard()[Key::Right].is_down();
         left_pressed = left_pressed || window.keyboard()[Key::Left].is_down();
         up_pressed = up_pressed || window.keyboard()[Key::Up].is_down();
         down_pressed = down_pressed || window.keyboard()[Key::Down].is_down();
         rotate_anticlockwise = rotate_anticlockwise || window.keyboard()[Key::Q].is_down();
         rotate_clockwise = rotate_clockwise || window.keyboard()[Key::E].is_down();
+        fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
+
+        if fire {
+            println!("Fire!");
+        }
 
         let dx = match (left_pressed, right_pressed) {
             (true, false) => -1.0,
