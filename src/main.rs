@@ -139,6 +139,7 @@ struct Shot {
     velocity: Vector,
     model_lines: Vec<TintedLine>,
     transformed_lines: Vec<TintedLine>,
+    alive: bool,
 }
 
 impl Shot {
@@ -147,6 +148,7 @@ impl Shot {
             TintedLine::new((-4, 4), (4, 4), Color::RED),
             TintedLine::new((4, 4), (0, -4), Color::RED),
             TintedLine::new((0, -4), (-4, 4), Color::RED),
+            TintedLine::new((0, 0), (0, -8), Color::YELLOW),
         ];
         let length = lines.len();
         Shot {
@@ -155,6 +157,7 @@ impl Shot {
             velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
             model_lines: lines,
             transformed_lines: Vec::with_capacity(length),
+            alive: true,
         }
     }
 
@@ -180,6 +183,7 @@ struct Player {
     angle: f32,
     model_lines: Vec<TintedLine>,
     transformed_lines: Vec<TintedLine>,
+    alive: bool,
 }
 
 impl Player {
@@ -195,10 +199,15 @@ impl Player {
             angle,
             model_lines: lines,
             transformed_lines: Vec::with_capacity(length),
+            alive: true,
         }
     }
 
     fn control(&mut self, dx: f32, dy: f32, d_theta: f32) {
+        if !self.alive {
+            return;
+        }
+
         // Update the position.
         if dx != 0.0 || dy != 0.0 {
             let movement = Vector::new(dx * 2.0, dy * 2.0);
@@ -221,7 +230,9 @@ impl Player {
     }
 
     fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.add_lines(self.transformed_lines.iter());
+        if self.alive {
+            line_renderer.add_lines(self.transformed_lines.iter());
+        }
     }
 }
 
@@ -314,10 +325,8 @@ impl Playing {
             active_gamepad: None,
         })
     }
-}
 
-impl GameState for Playing {
-    fn update(&mut self, window: &mut Window) -> Result<Action> {
+    fn poll_inputs(&mut self, window: &mut Window) -> (bool, bool, f32, f32, f32) {
         let mut quit = false;
         let mut right_pressed = false;
         let mut left_pressed = false;
@@ -328,7 +337,6 @@ impl GameState for Playing {
         let mut fire: bool = false;
 
         // Use GilRs directly, because Quicksilver doesn't see some of the buttons.
-
         // Examine new gamepad events.
         while let Some(event) = self.gilrs.next_event() {
             if self.active_gamepad.is_none() {
@@ -362,12 +370,6 @@ impl GameState for Playing {
         rotate_clockwise = rotate_clockwise || window.keyboard()[Key::E].is_down();
         fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
 
-        if fire {
-            println!("Fire");
-            let shot = Shot::new(self.player.pos, self.player.angle);
-            self.shots.push(shot);
-        }
-
         let dx = match (left_pressed, right_pressed) {
             (true, false) => -1.0,
             (false, true) => 1.0,
@@ -384,20 +386,75 @@ impl GameState for Playing {
             _ => 0.0,
         };
 
-        self.player.control(dx, dy, d_theta);
-        self.landscape.update();
-        for shot in &mut self.shots {
-            shot.control();
-        }
+        (quit, fire, dx, dy, d_theta)
+    }
 
+    fn reap_dead_shots(&mut self) {
+        let mut i = 0;
+        while i != self.shots.len() {
+            if !self.shots[i].alive {
+                self.shots.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn collide_shots(&mut self) {
+        let playfield = Rectangle::new(
+            (-16.0, -16.0),
+            (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
+        );
+
+        // Collide the player's shots with the landscape and check for them going out of bounds.
+        for shot in &mut self.shots {
+            // Collide the shot with the landscape.
+            'dead: for line_a in &shot.transformed_lines {
+                for line_b in &self.landscape.landscape {
+                    if line_a.line.intersects(&line_b.line) {
+                        shot.alive = false;
+                        break 'dead;
+                    }
+                }
+            }
+
+            // Check for the shot going out of bounds.
+            shot.alive = shot.alive && playfield.contains(shot.pos);
+        }
+    }
+
+    fn collide_player(&mut self) {
         // Collide the player with the landscape.
         'kaboom: for line_a in &self.landscape.landscape {
             for line_b in &self.player.transformed_lines {
                 if line_a.line.intersects(&line_b.line) {
-                    println!("Kaboom!!!");
+                    self.player.alive = false;
                     break 'kaboom;
                 }
             }
+        }
+    }
+}
+
+impl GameState for Playing {
+    fn update(&mut self, window: &mut Window) -> Result<Action> {
+        let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
+
+        if self.player.alive {
+            if fire {
+                let shot = Shot::new(self.player.pos, self.player.angle);
+                self.shots.push(shot);
+            }
+
+            self.player.control(dx, dy, d_theta);
+            self.landscape.update();
+            for shot in &mut self.shots {
+                shot.control();
+            }
+
+            self.collide_player();
+            self.collide_shots();
+            self.reap_dead_shots();
         }
 
         let result = if quit { Quit } else { Continue };
