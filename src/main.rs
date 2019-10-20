@@ -1,4 +1,4 @@
-// Play around with Quicksilver... trying to draw "glowy" lines.
+// Play around with Quicksilver.
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
@@ -52,7 +52,10 @@ trait Transformable {
     where
         Self: Sized;
 
-    fn rotated_by(&self, angle: f32) -> Self where Self: Sized {
+    fn rotated_by(&self, angle: f32) -> Self
+    where
+        Self: Sized,
+    {
         self.transformed(Transform::rotate(angle))
     }
 }
@@ -252,9 +255,6 @@ impl Shot {
                 .iter()
                 .map(|line| line.transformed(transform)),
         );
-
-        let line = Line::new((0, 0), (100, 100));
-        line.translate((10, 10));
 
         self.collision_lines.clear();
         self.collision_lines.extend(
