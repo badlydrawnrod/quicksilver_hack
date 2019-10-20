@@ -47,6 +47,35 @@ trait GameState {
     }
 }
 
+trait Transformable {
+    fn transformed(&self, transform: Transform) -> Self
+    where
+        Self: Sized;
+
+    fn rotated_by(&self, angle: f32) -> Self where Self: Sized {
+        self.transformed(Transform::rotate(angle))
+    }
+}
+
+impl Transformable for Line {
+    fn transformed(&self, transform: Transform) -> Self {
+        Line {
+            a: transform * self.a,
+            b: transform * self.b,
+            t: self.t,
+        }
+    }
+}
+
+impl Transformable for TintedLine {
+    fn transformed(&self, transform: Transform) -> Self {
+        TintedLine {
+            line: self.line.transformed(transform),
+            colour: self.colour,
+        }
+    }
+}
+
 struct Loading {
     line: Asset<Image>,
 }
@@ -87,14 +116,6 @@ impl TintedLine {
             line: Line::new(start, end),
             colour: colour.into(),
         }
-    }
-
-    fn transformed(self, transform: Transform) -> Self {
-        TintedLine::new(
-            transform * self.line.a,
-            transform * self.line.b,
-            self.colour,
-        )
     }
 }
 
@@ -138,7 +159,7 @@ struct Turret {
     angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<TintedLine>,
+    collision_lines: Vec<Line>,
     alive: bool,
 }
 
@@ -179,7 +200,7 @@ impl Turret {
         self.collision_lines.extend(
             self.model_lines
                 .iter()
-                .map(|line| line.transformed(transform)),
+                .map(|line| line.line.transformed(transform)),
         );
 
         self.alive = self.pos.x >= -16.0;
@@ -197,7 +218,7 @@ struct Shot {
     velocity: Vector,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<TintedLine>,
+    collision_lines: Vec<Line>,
     alive: bool,
 }
 
@@ -232,11 +253,14 @@ impl Shot {
                 .map(|line| line.transformed(transform)),
         );
 
+        let line = Line::new((0, 0), (100, 100));
+        line.translate((10, 10));
+
         self.collision_lines.clear();
         self.collision_lines.extend(
             self.model_lines
                 .iter()
-                .map(|line| line.transformed(transform)),
+                .map(|line| line.line.transformed(transform)),
         );
     }
 
@@ -251,7 +275,7 @@ struct Player {
     angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<TintedLine>,
+    collision_lines: Vec<Line>,
     alive: bool,
 }
 
@@ -302,7 +326,7 @@ impl Player {
         self.collision_lines.extend(
             self.model_lines
                 .iter()
-                .map(|line| line.transformed(transform)),
+                .map(|line| line.line.transformed(transform)),
         );
     }
 
@@ -321,7 +345,7 @@ const LANDSCAPE_STEP: f32 = 16.0;
 
 struct Landscape {
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<TintedLine>,
+    collision_lines: Vec<Line>,
     rng: ThreadRng,
     want_turret: bool,
 }
@@ -336,7 +360,7 @@ impl Landscape {
             let next_point = Vector::new(x, last_point.y);
             let line = Line::new(last_point, next_point);
             render_lines.push(TintedLine::new(line.a, line.b, Color::GREEN));
-            collision_lines.push(TintedLine::new(line.a, line.b, Color::GREEN));
+            collision_lines.push(line);
             last_point = next_point;
             x += LANDSCAPE_STEP;
         }
@@ -353,7 +377,7 @@ impl Landscape {
             line.line = line.line.translate((-4.0, 0.0));
         }
         for line in self.collision_lines.iter_mut() {
-            line.line = line.line.translate((-4.0, 0.0));
+            *line = line.translate((-4.0, 0.0));
         }
 
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
@@ -373,9 +397,9 @@ impl Landscape {
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
             self.render_lines
                 .push(TintedLine::new(b, next_point, Color::GREEN));
-            self.collision_lines
-                .push(TintedLine::new(b, next_point, Color::GREEN));
+            self.collision_lines.push(Line::new(b, next_point));
 
+            // Randomly add a turret if the conditions are right.
             self.want_turret = self.rng.gen_range(0, 100) >= 50 && b.distance(next_point) > 50.0;
         }
 
@@ -537,7 +561,7 @@ impl Playing {
             // Collide the shot with the landscape.
             'dead: for line_a in &shot.collision_lines {
                 for line_b in &self.landscape.collision_lines {
-                    if line_a.line.intersects(&line_b.line) {
+                    if line_a.intersects(&line_b) {
                         shot.alive = false;
                         break 'dead;
                     }
@@ -553,7 +577,7 @@ impl Playing {
     fn collide_player(&mut self) {
         'kaboom: for line_a in &self.landscape.collision_lines {
             for line_b in &self.player.collision_lines {
-                if line_a.line.intersects(&line_b.line) {
+                if line_a.intersects(&line_b) {
                     self.player.alive = false;
                     break 'kaboom;
                 }
