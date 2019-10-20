@@ -173,6 +173,7 @@ impl Shot {
         );
     }
 
+    /// Draw the shot to the given line renderer.
     fn draw(&self, line_renderer: &mut LineRenderer) {
         line_renderer.add_lines(self.transformed_lines.iter());
     }
@@ -203,7 +204,7 @@ impl Player {
         }
     }
 
-    fn control(&mut self, dx: f32, dy: f32, d_theta: f32) {
+    fn control(&mut self, dx: f32, dy: f32, rotate_by: f32) {
         if !self.alive {
             return;
         }
@@ -215,8 +216,8 @@ impl Player {
         }
 
         // Update the rotation.
-        if d_theta != 0.0 {
-            self.angle += d_theta * 4.0;
+        if rotate_by != 0.0 {
+            self.angle += rotate_by * 4.0;
         }
 
         // Update the transformed model from the original model.
@@ -229,6 +230,7 @@ impl Player {
         );
     }
 
+    /// Draw the player's ship to the given line renderer.
     fn draw(&self, line_renderer: &mut LineRenderer) {
         if self.alive {
             line_renderer.add_lines(self.transformed_lines.iter());
@@ -293,6 +295,7 @@ impl Landscape {
         }
     }
 
+    /// Draw the landscape to the given line renderer.
     fn draw(&self, line_renderer: &mut LineRenderer) {
         line_renderer.add_lines(self.landscape.iter());
     }
@@ -326,6 +329,7 @@ impl Playing {
         })
     }
 
+    /// Poll all possible input sources.
     fn poll_inputs(&mut self, window: &mut Window) -> (bool, bool, f32, f32, f32) {
         let mut quit = false;
         let mut right_pressed = false;
@@ -336,39 +340,47 @@ impl Playing {
         let mut rotate_clockwise = false;
         let mut fire: bool = false;
 
-        // Use GilRs directly, because Quicksilver doesn't see some of the buttons.
-        // Examine new gamepad events.
+        // Examine new gamepad events using GilRs directly as Quicksilver doesn't see some of the
+        // buttons.
         while let Some(event) = self.gilrs.next_event() {
             if self.active_gamepad.is_none() {
                 // If we don't have an active gamepad yet, then we do now.
                 self.active_gamepad = Some(event.id);
             }
+
+            // Check the gamepad for edge-triggered scenarios such as a button being pressed or
+            // released in this turn.
             match event.event {
-                EventType::ButtonPressed(Button::South, _) => fire = true,
+                // Quitting and firing are edge-triggered.
                 EventType::ButtonReleased(Button::Start, _) => quit = true,
+                EventType::ButtonPressed(Button::South, _) => fire = true,
                 _ => (),
             };
         }
 
-        // Check the player's gamepad.
+        // Check the gamepad for level-triggered events, such as button being held down. All
+        // movement is level-triggered.
         if let Some(id) = self.active_gamepad {
             let gamepad = self.gilrs.gamepad(id);
-            quit = quit || gamepad.is_pressed(Button::Select);
             left_pressed = left_pressed || gamepad.is_pressed(Button::DPadLeft);
             right_pressed = right_pressed || gamepad.is_pressed(Button::DPadRight);
             up_pressed = up_pressed || gamepad.is_pressed(Button::DPadUp);
             down_pressed = down_pressed || gamepad.is_pressed(Button::DPadDown);
+            rotate_anticlockwise = rotate_anticlockwise || gamepad.is_pressed(Button::West);
+            rotate_clockwise = rotate_clockwise || gamepad.is_pressed(Button::East);
         }
 
-        // Check the keyboard.
+        // Check the keyboard for edge-triggered events. Quitting and firing are edge-triggered.
         quit = quit || window.keyboard()[Key::Escape] == ButtonState::Released;
-        right_pressed = right_pressed || window.keyboard()[Key::Right].is_down();
+        fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
+
+        // Check the keyboard for level-triggered events. All movement is level-triggered.
         left_pressed = left_pressed || window.keyboard()[Key::Left].is_down();
+        right_pressed = right_pressed || window.keyboard()[Key::Right].is_down();
         up_pressed = up_pressed || window.keyboard()[Key::Up].is_down();
         down_pressed = down_pressed || window.keyboard()[Key::Down].is_down();
         rotate_anticlockwise = rotate_anticlockwise || window.keyboard()[Key::Q].is_down();
         rotate_clockwise = rotate_clockwise || window.keyboard()[Key::E].is_down();
-        fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
 
         let dx = match (left_pressed, right_pressed) {
             (true, false) => -1.0,
@@ -380,15 +392,16 @@ impl Playing {
             (false, true) => 1.0,
             _ => 0.0,
         };
-        let d_theta = match (rotate_anticlockwise, rotate_clockwise) {
+        let rotate_by = match (rotate_anticlockwise, rotate_clockwise) {
             (true, false) => -1.0,
             (false, true) => 1.0,
             _ => 0.0,
         };
 
-        (quit, fire, dx, dy, d_theta)
+        (quit, fire, dx, dy, rotate_by)
     }
 
+    /// Remove shots that are no longer alive.
     fn reap_dead_shots(&mut self) {
         let mut i = 0;
         while i != self.shots.len() {
@@ -400,13 +413,13 @@ impl Playing {
         }
     }
 
+    /// Collide the player's shots with the landscape and check for them going out of bounds.
     fn collide_shots(&mut self) {
         let playfield = Rectangle::new(
             (-16.0, -16.0),
             (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
         );
 
-        // Collide the player's shots with the landscape and check for them going out of bounds.
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             'dead: for line_a in &shot.transformed_lines {
@@ -423,8 +436,8 @@ impl Playing {
         }
     }
 
+    /// Collide the player with the landscape.
     fn collide_player(&mut self) {
-        // Collide the player with the landscape.
         'kaboom: for line_a in &self.landscape.landscape {
             for line_b in &self.player.transformed_lines {
                 if line_a.line.intersects(&line_b.line) {
