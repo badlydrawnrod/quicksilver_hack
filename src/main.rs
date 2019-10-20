@@ -133,6 +133,55 @@ impl LineRenderer {
     }
 }
 
+struct Turret {
+    pos: Vector,
+    angle: f32,
+    model_lines: Vec<TintedLine>,
+    transformed_lines: Vec<TintedLine>,
+    alive: bool,
+}
+
+impl Turret {
+    fn new(pos: Vector, angle: f32) -> Self {
+        let lines = vec![
+            TintedLine::new((-16, 0), (16, 0), Color::RED),
+            TintedLine::new((-16, 0), (-12, 16), Color::RED),
+            TintedLine::new((-12, 16), (-4, 16), Color::RED),
+            TintedLine::new((-4, 16), (0, 24), Color::RED),
+            TintedLine::new((0, 24), (4, 16), Color::RED),
+            TintedLine::new((-4, 16), (12, 16), Color::RED),
+            TintedLine::new((12, 16), (16, 0), Color::RED),
+        ];
+        let length = lines.len();
+        Turret {
+            pos,
+            angle,
+            model_lines: lines,
+            transformed_lines: Vec::with_capacity(length),
+            alive: true,
+        }
+    }
+
+    fn control(&mut self) {
+        self.pos = self.pos.translate((-4.0, 0.0));
+
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        self.transformed_lines.clear();
+        self.transformed_lines.extend(
+            self.model_lines
+                .iter()
+                .map(|line| line.transformed(transform)),
+        );
+
+        self.alive = self.pos.x >= -16.0;
+    }
+
+    /// Draw the turret to the given line renderer.
+    fn draw(&self, line_renderer: &mut LineRenderer) {
+        line_renderer.add_lines(self.transformed_lines.iter());
+    }
+}
+
 struct Shot {
     pos: Vector,
     angle: f32,
@@ -246,6 +295,7 @@ const LANDSCAPE_STEP: f32 = 16.0;
 struct Landscape {
     landscape: Vec<TintedLine>,
     rng: ThreadRng,
+    want_turret: bool,
 }
 
 impl Landscape {
@@ -262,6 +312,7 @@ impl Landscape {
         Landscape {
             landscape,
             rng: rand::thread_rng(),
+            want_turret: false,
         }
     }
 
@@ -272,6 +323,7 @@ impl Landscape {
 
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
+        self.want_turret = false;
         let b = self.landscape[self.landscape.len() - 1].line.b;
         if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 {
             let new_y = if self.rng.gen_range(0, 100) >= 25 {
@@ -286,6 +338,8 @@ impl Landscape {
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
             self.landscape
                 .push(TintedLine::new(b, next_point, Color::GREEN));
+
+            self.want_turret = self.rng.gen_range(0, 100) >= 50 && b.distance(next_point) > 50.0;
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
@@ -306,6 +360,7 @@ struct Playing {
     player: Player,
     landscape: Landscape,
     shots: Vec<Shot>,
+    turrets: Vec<Turret>,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
@@ -324,6 +379,7 @@ impl Playing {
             player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
             landscape: Landscape::new(),
             shots: Vec::new(),
+            turrets: Vec::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
@@ -421,6 +477,18 @@ impl Playing {
         }
     }
 
+    /// Remove turrets that are no longer alive.
+    fn reap_dead_turrets(&mut self) {
+        let mut i = 0;
+        while i != self.turrets.len() {
+            if !self.turrets[i].alive {
+                self.turrets.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
     /// Collide the player's shots with the landscape and check for them going out of bounds.
     fn collide_shots(&mut self) {
         let playfield = Rectangle::new(
@@ -469,6 +537,19 @@ impl GameState for Playing {
 
             self.player.control(dx, dy, d_theta);
             self.landscape.update();
+            if self.landscape.want_turret {
+                if let Some(last_line) = self.landscape.landscape.last() {
+                    let angle = (last_line.line.a - last_line.line.b).angle();
+                    let midpoint = last_line.line.center();
+                    let turret = Turret::new(midpoint, angle);
+                    self.turrets.push(turret);
+                }
+            }
+
+            for turret in &mut self.turrets {
+                turret.control();
+            }
+
             for shot in &mut self.shots {
                 shot.control();
             }
@@ -476,6 +557,7 @@ impl GameState for Playing {
             self.collide_player();
             self.collide_shots();
             self.reap_dead_shots();
+            self.reap_dead_turrets();
         }
 
         let result = if quit { Quit } else { Continue };
@@ -486,6 +568,9 @@ impl GameState for Playing {
         window.set_blend_mode(BlendMode::Additive)?;
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
+        for turret in &self.turrets {
+            turret.draw(&mut self.line_renderer);
+        }
         self.player.draw(&mut self.line_renderer);
         for shot in &self.shots {
             shot.draw(&mut self.line_renderer);
