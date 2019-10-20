@@ -375,10 +375,18 @@ impl Playing {
         fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
 
         // Check the keyboard for level-triggered events. All movement is level-triggered.
-        left_pressed = left_pressed || window.keyboard()[Key::Left].is_down();
-        right_pressed = right_pressed || window.keyboard()[Key::Right].is_down();
-        up_pressed = up_pressed || window.keyboard()[Key::Up].is_down();
-        down_pressed = down_pressed || window.keyboard()[Key::Down].is_down();
+        left_pressed = left_pressed
+            || window.keyboard()[Key::Left].is_down()
+            || window.keyboard()[Key::A].is_down();
+        right_pressed = right_pressed
+            || window.keyboard()[Key::Right].is_down()
+            || window.keyboard()[Key::D].is_down();
+        up_pressed = up_pressed
+            || window.keyboard()[Key::Up].is_down()
+            || window.keyboard()[Key::W].is_down();
+        down_pressed = down_pressed
+            || window.keyboard()[Key::Down].is_down()
+            || window.keyboard()[Key::S].is_down();
         rotate_anticlockwise = rotate_anticlockwise || window.keyboard()[Key::Q].is_down();
         rotate_clockwise = rotate_clockwise || window.keyboard()[Key::E].is_down();
 
