@@ -145,10 +145,10 @@ struct Shot {
 impl Shot {
     fn new(pos: Vector, angle: f32) -> Self {
         let lines = vec![
-            TintedLine::new((-4, 4), (4, 4), Color::RED),
-            TintedLine::new((4, 4), (0, -4), Color::RED),
-            TintedLine::new((0, -4), (-4, 4), Color::RED),
-            TintedLine::new((0, 0), (0, -8), Color::YELLOW),
+            TintedLine::new((-4, 4), (4, 4), Color::GREEN),
+            TintedLine::new((4, 4), (0, -4), Color::GREEN),
+            TintedLine::new((0, -4), (-4, 4), Color::GREEN),
+            TintedLine::new((0, 0), (0, -8), Color::GREEN),
         ];
         let length = lines.len();
         Shot {
@@ -190,7 +190,7 @@ struct Player {
 impl Player {
     fn new(pos: Vector, angle: f32) -> Self {
         let lines = vec![
-            TintedLine::new((-16, 16), (16, 16), Color::CYAN),
+            TintedLine::new((-16, 16), (16, 16), Color::GREEN),
             TintedLine::new((16, 16), (0, -16), Color::GREEN),
             TintedLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
