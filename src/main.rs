@@ -47,6 +47,28 @@ trait GameState {
     }
 }
 
+trait Kill {
+    fn kill(&mut self);
+    fn is_dead(&self) -> bool;
+}
+
+trait Reap {
+    fn reap(&mut self);
+}
+
+impl<T: Kill> Reap for Vec<T> {
+    fn reap(&mut self) {
+        let mut i = 0;
+        while i < self.len() {
+            if self[i].is_dead() {
+                self.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+}
+
 trait Transformable {
     fn transformed(&self, transform: Transform) -> Self
     where
@@ -166,6 +188,16 @@ struct Turret {
     alive: bool,
 }
 
+impl Kill for Turret {
+    fn kill(&mut self) {
+        self.alive = false;
+    }
+
+    fn is_dead(&self) -> bool {
+        !self.alive
+    }
+}
+
 impl Turret {
     fn new(pos: Vector, angle: f32) -> Self {
         let lines = vec![
@@ -206,7 +238,9 @@ impl Turret {
                 .map(|line| line.line.transformed(transform)),
         );
 
-        self.alive = self.pos.x >= -16.0;
+        if self.pos.x < -16.0 {
+            self.kill();
+        }
     }
 
     /// Draw the turret to the given line renderer.
@@ -223,6 +257,16 @@ struct Shot {
     render_lines: Vec<TintedLine>,
     collision_lines: Vec<Line>,
     alive: bool,
+}
+
+impl Kill for Shot {
+    fn kill(&mut self) {
+        self.alive = false;
+    }
+
+    fn is_dead(&self) -> bool {
+        !self.alive
+    }
 }
 
 impl Shot {
@@ -277,6 +321,16 @@ struct Player {
     render_lines: Vec<TintedLine>,
     collision_lines: Vec<Line>,
     alive: bool,
+}
+
+impl Kill for Player {
+    fn kill(&mut self) {
+        self.alive = false;
+    }
+
+    fn is_dead(&self) -> bool {
+        !self.alive
+    }
 }
 
 impl Player {
@@ -526,30 +580,6 @@ impl Playing {
         (quit, fire, dx, dy, rotate_by)
     }
 
-    /// Remove shots that are no longer alive.
-    fn reap_dead_shots(&mut self) {
-        let mut i = 0;
-        while i != self.shots.len() {
-            if !self.shots[i].alive {
-                self.shots.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    /// Remove turrets that are no longer alive.
-    fn reap_dead_turrets(&mut self) {
-        let mut i = 0;
-        while i != self.turrets.len() {
-            if !self.turrets[i].alive {
-                self.turrets.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
-
     /// Collide the player's shots with the landscape and check for them going out of bounds.
     fn collide_shots(&mut self) {
         let playfield = Rectangle::new(
@@ -617,8 +647,8 @@ impl GameState for Playing {
 
             self.collide_player();
             self.collide_shots();
-            self.reap_dead_shots();
-            self.reap_dead_turrets();
+            self.shots.reap();
+            self.turrets.reap();
         }
 
         let result = if quit { Quit } else { Continue };
