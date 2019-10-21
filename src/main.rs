@@ -52,6 +52,20 @@ trait Kill {
     fn is_dead(&self) -> bool;
 }
 
+macro_rules! killable {
+    ($name : ident) => {
+        impl Kill for $name {
+            fn kill(&mut self) {
+                self.alive = false;
+            }
+
+            fn is_dead(&self) -> bool {
+                !self.alive
+            }
+        }
+    };
+}
+
 trait Reap {
     fn reap(&mut self);
 }
@@ -188,15 +202,7 @@ struct Turret {
     alive: bool,
 }
 
-impl Kill for Turret {
-    fn kill(&mut self) {
-        self.alive = false;
-    }
-
-    fn is_dead(&self) -> bool {
-        !self.alive
-    }
-}
+killable!(Turret);
 
 impl Turret {
     fn new(pos: Vector, angle: f32) -> Self {
@@ -259,15 +265,7 @@ struct Shot {
     alive: bool,
 }
 
-impl Kill for Shot {
-    fn kill(&mut self) {
-        self.alive = false;
-    }
-
-    fn is_dead(&self) -> bool {
-        !self.alive
-    }
-}
+killable!(Shot);
 
 impl Shot {
     fn new(pos: Vector, angle: f32) -> Self {
@@ -323,15 +321,7 @@ struct Player {
     alive: bool,
 }
 
-impl Kill for Player {
-    fn kill(&mut self) {
-        self.alive = false;
-    }
-
-    fn is_dead(&self) -> bool {
-        !self.alive
-    }
-}
+killable!(Player);
 
 impl Player {
     fn new(pos: Vector, angle: f32) -> Self {
