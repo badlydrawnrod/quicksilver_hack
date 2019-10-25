@@ -211,13 +211,13 @@ killable!(Turret);
 impl Turret {
     fn new(pos: Vector, angle: f32) -> Self {
         let lines = vec![
-            TintedLine::new((-16, 0), (16, 0), Color::RED),
-            TintedLine::new((-16, 0), (-12, 16), Color::RED),
-            TintedLine::new((-12, 16), (-4, 16), Color::RED),
-            TintedLine::new((-4, 16), (0, 24), Color::RED),
-            TintedLine::new((0, 24), (4, 16), Color::RED),
-            TintedLine::new((-4, 16), (12, 16), Color::RED),
-            TintedLine::new((12, 16), (16, 0), Color::RED),
+            TintedLine::new((-16, 0), (16, 0), Color::GREEN),
+            TintedLine::new((-16, 0), (-12, 16), Color::GREEN),
+            TintedLine::new((-12, 16), (-4, 16), Color::GREEN),
+            TintedLine::new((-4, 16), (0, 24), Color::GREEN),
+            TintedLine::new((0, 24), (4, 16), Color::GREEN),
+            TintedLine::new((-4, 16), (12, 16), Color::GREEN),
+            TintedLine::new((12, 16), (16, 0), Color::GREEN),
         ];
         let length = lines.len();
         Turret {
@@ -289,10 +289,10 @@ impl Shot {
         }
     }
 
-    fn control(&mut self) {
+    fn control(&mut self, camera: &Camera) {
         self.pos += self.velocity;
 
-        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        let transform = Transform::translate(camera.pos + self.pos) * Transform::rotate(self.angle);
         self.render_lines.clear();
         self.render_lines.extend(
             self.model_lines
@@ -638,7 +638,7 @@ impl GameState for Playing {
             }
 
             for shot in &mut self.shots {
-                shot.control();
+                shot.control(&self.camera);
             }
 
             self.collide_player();
