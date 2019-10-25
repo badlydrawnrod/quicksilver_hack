@@ -197,12 +197,32 @@ struct Camera {
     pos: Vector,
 }
 
+struct CollisionLines(Vec<Line>);
+
+impl CollisionLines {
+    fn update(&mut self, transform: Transform, lines: impl Iterator<Item = Line>) {
+        self.0.clear();
+        self.0.extend(lines.map(|line| line.transformed(transform)));
+    }
+
+    fn intersects(&self, other: &CollisionLines) -> bool {
+        for line_a in &self.0 {
+            for line_b in &other.0 {
+                if line_a.intersects(&line_b) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+
 struct Turret {
     pos: Vector,
     angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<Line>,
+    collision_lines: CollisionLines,
     alive: bool,
 }
 
@@ -225,7 +245,7 @@ impl Turret {
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: Vec::with_capacity(length),
+            collision_lines: CollisionLines(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -239,12 +259,8 @@ impl Turret {
                 .map(|line| line.transformed(transform)),
         );
 
-        self.collision_lines.clear();
-        self.collision_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.line.transformed(transform)),
-        );
+        self.collision_lines
+            .update(transform, self.model_lines.iter().map(|line| line.line));
 
         if self.pos.x < camera.pos.x - 16.0 {
             self.kill();
@@ -263,7 +279,7 @@ struct Shot {
     velocity: Vector,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<Line>,
+    collision_lines: CollisionLines,
     alive: bool,
 }
 
@@ -284,7 +300,7 @@ impl Shot {
             velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: Vec::with_capacity(length),
+            collision_lines: CollisionLines(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -300,12 +316,8 @@ impl Shot {
                 .map(|line| line.transformed(transform)),
         );
 
-        self.collision_lines.clear();
-        self.collision_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.line.transformed(transform)),
-        );
+        self.collision_lines
+            .update(transform, self.model_lines.iter().map(|line| line.line));
     }
 
     /// Draw the shot to the given line renderer.
@@ -319,7 +331,7 @@ struct Player {
     angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<Line>,
+    collision_lines: CollisionLines,
     alive: bool,
 }
 
@@ -338,7 +350,7 @@ impl Player {
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: Vec::with_capacity(length),
+            collision_lines: CollisionLines(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -368,12 +380,8 @@ impl Player {
                 .map(|line| line.transformed(transform)),
         );
 
-        self.collision_lines.clear();
-        self.collision_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.line.transformed(transform)),
-        );
+        self.collision_lines
+            .update(transform, self.model_lines.iter().map(|line| line.line));
     }
 
     /// Draw the player's ship to the given line renderer.
@@ -391,7 +399,7 @@ const LANDSCAPE_STEP: f32 = 16.0;
 
 struct Landscape {
     render_lines: Vec<TintedLine>,
-    collision_lines: Vec<Line>,
+    collision_lines: CollisionLines,
     rng: ThreadRng,
     want_turret: bool,
 }
@@ -412,7 +420,7 @@ impl Landscape {
         }
         Landscape {
             render_lines,
-            collision_lines,
+            collision_lines: CollisionLines(collision_lines),
             rng: rand::thread_rng(),
             want_turret: false,
         }
@@ -436,7 +444,6 @@ impl Landscape {
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
             self.render_lines
                 .push(TintedLine::new(b, next_point, Color::GREEN));
-            self.collision_lines.push(Line::new(b, next_point));
 
             // Randomly add a turret if the conditions are right.
             self.want_turret = self.rng.gen_range(0, 100) >= 50 && b.distance(next_point) > 50.0;
@@ -447,6 +454,11 @@ impl Landscape {
         if a.x < camera.pos.x {
             self.render_lines.remove(0);
         }
+
+        self.collision_lines.update(
+            Transform::IDENTITY,
+            self.render_lines.iter().map(|line| line.line),
+        );
     }
 
     /// Draw the landscape to the given line renderer.
@@ -578,12 +590,18 @@ impl Playing {
 
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
-            'dead: for line_a in &shot.collision_lines {
-                for line_b in &self.landscape.collision_lines {
-                    if line_a.intersects(&line_b) {
-                        shot.alive = false;
-                        break 'dead;
-                    }
+            if shot
+                .collision_lines
+                .intersects(&self.landscape.collision_lines)
+            {
+                shot.alive = false;
+            }
+
+            // Collide the shot with the turrets.
+            for turret in &mut self.turrets {
+                if shot.collision_lines.intersects(&turret.collision_lines) {
+                    shot.alive = false;
+                    turret.alive = false;
                 }
             }
 
@@ -594,13 +612,12 @@ impl Playing {
 
     /// Collide the player with the landscape.
     fn collide_player(&mut self) {
-        'kaboom: for line_a in &self.landscape.collision_lines {
-            for line_b in &self.player.collision_lines {
-                if line_a.intersects(&line_b) {
-                    self.player.alive = false;
-                    break 'kaboom;
-                }
-            }
+        if self
+            .player
+            .collision_lines
+            .intersects(&self.landscape.collision_lines)
+        {
+            self.player.alive = false;
         }
     }
 }
