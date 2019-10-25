@@ -193,6 +193,10 @@ impl LineRenderer {
     }
 }
 
+struct Camera {
+    pos: Vector,
+}
+
 struct Turret {
     pos: Vector,
     angle: f32,
@@ -226,9 +230,7 @@ impl Turret {
         }
     }
 
-    fn control(&mut self) {
-        self.pos = self.pos.translate((-4.0, 0.0));
-
+    fn control(&mut self, camera: &Camera) {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.render_lines.clear();
         self.render_lines.extend(
@@ -244,7 +246,7 @@ impl Turret {
                 .map(|line| line.line.transformed(transform)),
         );
 
-        if self.pos.x < -16.0 {
+        if self.pos.x < camera.pos.x - 16.0 {
             self.kill();
         }
     }
@@ -341,7 +343,7 @@ impl Player {
         }
     }
 
-    fn control(&mut self, dx: f32, dy: f32, rotate_by: f32) {
+    fn control(&mut self, camera: &Camera, dx: f32, dy: f32, rotate_by: f32) {
         if !self.alive {
             return;
         }
@@ -358,7 +360,7 @@ impl Player {
         }
 
         // Update the transformed model from the original model.
-        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        let transform = Transform::translate(camera.pos + self.pos) * Transform::rotate(self.angle);
         self.render_lines.clear();
         self.render_lines.extend(
             self.model_lines
@@ -416,19 +418,12 @@ impl Landscape {
         }
     }
 
-    fn update(&mut self) {
-        for line in self.render_lines.iter_mut() {
-            line.line = line.line.translate((-4.0, 0.0));
-        }
-        for line in self.collision_lines.iter_mut() {
-            *line = line.translate((-4.0, 0.0));
-        }
-
+    fn update(&mut self, camera: &Camera) {
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
         self.want_turret = false;
         let b = self.render_lines[self.render_lines.len() - 1].line.b;
-        if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 {
+        if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 + camera.pos.x {
             let new_y = if self.rng.gen_range(0, 100) >= 25 {
                 let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
                 while new_y > LANDSCAPE_MAX_Y || new_y < LANDSCAPE_MIN_Y {
@@ -449,7 +444,7 @@ impl Landscape {
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
         let a = &self.render_lines[0].line.b;
-        if a.x < 0.0 {
+        if a.x < camera.pos.x {
             self.render_lines.remove(0);
         }
     }
@@ -461,6 +456,7 @@ impl Landscape {
 }
 
 struct Playing {
+    camera: Camera,
     line_renderer: LineRenderer,
     player: Player,
     landscape: Landscape,
@@ -480,6 +476,9 @@ impl Playing {
             last_point = next_point;
         }
         Ok(Self {
+            camera: Camera {
+                pos: Vector::new(0, 0),
+            },
             line_renderer: LineRenderer::new(line_images[0].clone()),
             player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
             landscape: Landscape::new(),
@@ -606,18 +605,25 @@ impl Playing {
     }
 }
 
+fn rescale_viewport(window: &mut Window, translate: Vector) {
+    let view_rect = Rectangle::new(translate, Vector::new(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
+    let view = View::new(view_rect);
+    window.set_view(view);
+}
+
 impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
         let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
 
         if self.player.alive {
+            self.camera.pos = self.camera.pos.translate((4, 0));
             if fire {
                 let shot = Shot::new(self.player.pos, self.player.angle);
                 self.shots.push(shot);
             }
 
-            self.player.control(dx, dy, d_theta);
-            self.landscape.update();
+            self.player.control(&self.camera, dx, dy, d_theta);
+            self.landscape.update(&self.camera);
             if self.landscape.want_turret {
                 if let Some(last_line) = self.landscape.render_lines.last() {
                     let angle = (last_line.line.a - last_line.line.b).angle();
@@ -628,7 +634,7 @@ impl GameState for Playing {
             }
 
             for turret in &mut self.turrets {
-                turret.control();
+                turret.control(&self.camera);
             }
 
             for shot in &mut self.shots {
@@ -646,6 +652,7 @@ impl GameState for Playing {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
+        rescale_viewport(window, self.camera.pos);
         window.set_blend_mode(BlendMode::Additive)?;
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
