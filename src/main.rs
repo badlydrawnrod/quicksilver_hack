@@ -1,51 +1,36 @@
 // Play around with Quicksilver.
+mod collision_lines;
+mod game_state;
+mod line_renderer;
+mod loading;
+mod transformed;
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
 const VIRTUAL_WIDTH: u32 = WINDOW_WIDTH;
 const VIRTUAL_HEIGHT: u32 = WINDOW_HEIGHT;
-const LINE_THICKNESS: f32 = 8.0;
 
 use quicksilver::{
     geom::{Line, Rectangle, Shape, Transform, Vector},
-    graphics::{
-        Background::Blended, BlendMode, Color, Drawable, Image, ImageScaleStrategy, Mesh, View,
-    },
+    graphics::{BlendMode, Color, Image, ImageScaleStrategy, View},
     input::{ButtonState, Key},
-    lifecycle::{run, Asset, Settings, State, Window},
+    lifecycle::{run, Settings, State, Window},
     Result,
 };
 
 use gilrs::{Button, EventType, GamepadId, Gilrs};
 
+use collision_lines::CollisionLines;
+use game_state::{
+    Action,
+    Action::{Continue, Quit},
+    GameState,
+};
+use line_renderer::{LineRenderer, TintedLine};
+use loading::Loading;
+use transformed::Transformable;
+
 use rand::{prelude::*, Rng};
-
-use std::borrow::BorrowMut;
-use Action::{Continue, Quit, Transition};
-
-enum Action {
-    Quit,
-    // Stop the entire state machine (or game).
-    Continue,
-    // Continue in the current state.
-    Transition(Box<dyn GameState>), // Switch to the new state.
-}
-
-impl From<Action> for Result<Action> {
-    fn from(r: Action) -> Self {
-        Ok(r)
-    }
-}
-
-trait GameState {
-    fn update(&mut self, _window: &mut Window) -> Result<Action> {
-        Continue.into()
-    }
-
-    fn draw(&mut self, _window: &mut Window) -> Result<()> {
-        Ok(())
-    }
-}
 
 trait Kill {
     fn kill(&mut self);
@@ -83,138 +68,8 @@ impl<T: Kill> Reap for Vec<T> {
     }
 }
 
-trait Transformable {
-    fn transformed(&self, transform: Transform) -> Self
-    where
-        Self: Sized;
-
-    fn rotated_by(&self, angle: f32) -> Self
-    where
-        Self: Sized,
-    {
-        self.transformed(Transform::rotate(angle))
-    }
-}
-
-impl Transformable for Line {
-    fn transformed(&self, transform: Transform) -> Self {
-        Line {
-            a: transform * self.a,
-            b: transform * self.b,
-            t: self.t,
-        }
-    }
-}
-
-impl Transformable for TintedLine {
-    fn transformed(&self, transform: Transform) -> Self {
-        TintedLine {
-            line: self.line.transformed(transform),
-            colour: self.colour,
-        }
-    }
-}
-
-struct Loading {
-    line: Asset<Image>,
-}
-
-impl Loading {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            line: Asset::new(Image::load("line.png")),
-        })
-    }
-}
-
-impl GameState for Loading {
-    fn update(&mut self, _window: &mut Window) -> Result<Action> {
-        let mut lines: Vec<Image> = Vec::new();
-        self.line.execute(|image| {
-            lines.push(image.to_owned());
-            Ok(())
-        })?;
-        let result = if lines.is_empty() {
-            Continue
-        } else {
-            Transition(Box::new(Playing::new(lines)?))
-        };
-        result.into()
-    }
-}
-
-#[derive(Copy, Clone)]
-struct TintedLine {
-    line: Line,
-    colour: Color,
-}
-
-impl TintedLine {
-    fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
-        TintedLine {
-            line: Line::new(start, end),
-            colour: colour.into(),
-        }
-    }
-}
-
-struct LineRenderer {
-    image: Image,
-    mesh: Mesh,
-}
-
-impl LineRenderer {
-    fn new(image: Image) -> Self {
-        LineRenderer {
-            image,
-            mesh: Mesh::new(),
-        }
-    }
-
-    fn clear(&mut self) {
-        self.mesh.clear();
-    }
-
-    fn add_lines<'a>(&mut self, lines: impl Iterator<Item = &'a TintedLine>) {
-        let identity = Transform::IDENTITY;
-        for tinted_line in lines {
-            let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
-            thick_line.draw(
-                self.mesh.borrow_mut(),
-                Blended(&self.image, tinted_line.colour),
-                identity,
-                0.0,
-            );
-        }
-    }
-
-    fn render(&self, window: &mut Window) {
-        window.mesh().extend(&self.mesh);
-    }
-}
-
 struct Camera {
     pos: Vector,
-}
-
-struct CollisionLines(Vec<Line>);
-
-impl CollisionLines {
-    fn update(&mut self, transform: Transform, lines: impl Iterator<Item = Line>) {
-        self.0.clear();
-        self.0.extend(lines.map(|line| line.transformed(transform)));
-    }
-
-    fn intersects(&self, other: &CollisionLines) -> bool {
-        for line_a in &self.0 {
-            for line_b in &other.0 {
-                if line_a.intersects(&line_b) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
 }
 
 struct Turret {
@@ -245,7 +100,7 @@ impl Turret {
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines(Vec::with_capacity(length)),
+            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -300,7 +155,7 @@ impl Shot {
             velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines(Vec::with_capacity(length)),
+            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -350,7 +205,7 @@ impl Player {
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines(Vec::with_capacity(length)),
+            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
             alive: true,
         }
     }
@@ -420,7 +275,7 @@ impl Landscape {
         }
         Landscape {
             render_lines,
-            collision_lines: CollisionLines(collision_lines),
+            collision_lines: CollisionLines::new(collision_lines),
             rng: rand::thread_rng(),
             want_turret: false,
         }
@@ -618,6 +473,14 @@ impl Playing {
             .intersects(&self.landscape.collision_lines)
         {
             self.player.alive = false;
+        }
+
+        // Collide the player with the turrets.
+        for turret in &mut self.turrets {
+            if self.player.collision_lines.intersects(&turret.collision_lines) {
+                self.player.alive = false;
+                turret.alive = false;
+            }
         }
     }
 }
