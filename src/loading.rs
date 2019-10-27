@@ -1,4 +1,4 @@
-use crate::playing::Playing;
+use crate::playing::playing::Playing;
 use crate::{
     Action,
     Action::{Continue, Transition},
