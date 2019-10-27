@@ -1,3 +1,7 @@
+use super::camera::Camera;
+use super::killable::Reap;
+use super::turret::Turret;
+
 use gilrs::{Button, EventType, GamepadId, Gilrs};
 
 use rand::{prelude::*, Rng};
@@ -19,102 +23,6 @@ use crate::game_state::{
 };
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
-
-trait Kill {
-    fn kill(&mut self);
-    fn is_dead(&self) -> bool;
-}
-
-macro_rules! killable {
-    ($name : ident) => {
-        impl Kill for $name {
-            fn kill(&mut self) {
-                self.alive = false;
-            }
-
-            fn is_dead(&self) -> bool {
-                !self.alive
-            }
-        }
-    };
-}
-
-trait Reap {
-    fn reap(&mut self);
-}
-
-impl<T: Kill> Reap for Vec<T> {
-    fn reap(&mut self) {
-        let mut i = 0;
-        while i < self.len() {
-            if self[i].is_dead() {
-                self.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
-}
-
-struct Camera {
-    pos: Vector,
-}
-
-struct Turret {
-    pos: Vector,
-    angle: f32,
-    model_lines: Vec<TintedLine>,
-    render_lines: Vec<TintedLine>,
-    collision_lines: CollisionLines,
-    alive: bool,
-}
-
-killable!(Turret);
-
-impl Turret {
-    fn new(pos: Vector, angle: f32) -> Self {
-        let lines = vec![
-            TintedLine::new((-16, 0), (16, 0), Color::GREEN),
-            TintedLine::new((-16, 0), (-12, 16), Color::GREEN),
-            TintedLine::new((-12, 16), (-4, 16), Color::GREEN),
-            TintedLine::new((-4, 16), (0, 24), Color::GREEN),
-            TintedLine::new((0, 24), (4, 16), Color::GREEN),
-            TintedLine::new((-4, 16), (12, 16), Color::GREEN),
-            TintedLine::new((12, 16), (16, 0), Color::GREEN),
-        ];
-        let length = lines.len();
-        Turret {
-            pos,
-            angle,
-            model_lines: lines,
-            render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
-            alive: true,
-        }
-    }
-
-    fn control(&mut self, camera: &Camera) {
-        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        self.render_lines.clear();
-        self.render_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.transformed(transform)),
-        );
-
-        self.collision_lines
-            .update(transform, self.model_lines.iter().map(|line| line.line));
-
-        if self.pos.x < camera.pos.x - 16.0 {
-            self.kill();
-        }
-    }
-
-    /// Draw the turret to the given line renderer.
-    fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.add_lines(self.render_lines.iter());
-    }
-}
 
 struct Shot {
     pos: Vector,
