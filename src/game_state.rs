@@ -1,5 +1,6 @@
 use quicksilver::{lifecycle::Window, Result};
 
+/// The action to be taken after a game state has been updated.
 pub enum Action {
     /// Stop the entire state machine (or game).
     Quit,
@@ -15,6 +16,7 @@ impl From<Action> for Result<Action> {
     }
 }
 
+/// A game state (or screen) such as Playing, Paused, Loading, etc.
 pub trait GameState {
     fn update(&mut self, _window: &mut Window) -> Result<Action> {
         Action::Continue.into()
