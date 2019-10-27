@@ -1,0 +1,4 @@
+pub const WINDOW_WIDTH: u32 = 1280;
+pub const WINDOW_HEIGHT: u32 = 720;
+pub const VIRTUAL_WIDTH: u32 = WINDOW_WIDTH;
+pub const VIRTUAL_HEIGHT: u32 = WINDOW_HEIGHT;

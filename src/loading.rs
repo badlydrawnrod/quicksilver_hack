@@ -1,7 +1,8 @@
+use crate::playing::Playing;
 use crate::{
     Action,
     Action::{Continue, Transition},
-    GameState, Playing,
+    GameState,
 };
 
 use quicksilver::{
