@@ -13,7 +13,7 @@ impl CollisionLines {
         self.0.extend(lines.map(|line| line.transformed(transform)));
     }
 
-    pub(crate) fn intersects(&self, other: &CollisionLines) -> bool {
+    pub fn intersects(&self, other: &CollisionLines) -> bool {
         for line_a in &self.0 {
             for line_b in &other.0 {
                 if line_a.intersects(&line_b) {

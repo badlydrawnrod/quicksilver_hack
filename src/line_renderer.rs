@@ -33,7 +33,7 @@ impl TintedLine {
 }
 
 /// A renderer for lines with a given image.
-pub(crate) struct LineRenderer {
+pub struct LineRenderer {
     /// The image used for all of the lines.
     image: Image,
     /// The mesh that all of the lines are drawn to.
