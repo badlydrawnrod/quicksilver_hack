@@ -22,6 +22,7 @@ use crate::game_state::{
     GameState,
 };
 use crate::line_renderer::LineRenderer;
+use crate::playing::world_pos::WorldPos;
 
 pub struct Playing {
     camera: Camera,
@@ -30,6 +31,7 @@ pub struct Playing {
     landscape: Landscape,
     shots: Vec<Shot>,
     turrets: Vec<Turret>,
+    turret_shots: Vec<Shot>,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
 }
@@ -52,6 +54,7 @@ impl Playing {
             landscape: Landscape::new(),
             shots: Vec::new(),
             turrets: Vec::new(),
+            turret_shots: Vec::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
         })
@@ -140,7 +143,7 @@ impl Playing {
     /// Collide the player's shots and check for them going out of bounds.
     fn collide_shots(&mut self) {
         let playfield = Rectangle::new(
-            (-16.0, -16.0),
+            self.camera.pos + Vector::new(-16.0, -16.0),
             (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
         );
 
@@ -162,7 +165,37 @@ impl Playing {
             }
 
             // Check for the shot going out of bounds.
-            shot.alive = shot.alive && playfield.contains(shot.pos);
+            shot.alive = shot.alive && playfield.contains(shot.world_pos());
+        }
+    }
+
+    // Collide the turret shots and check for them going out of bounds.
+    fn collide_turret_shots(&mut self) {
+        let playfield = Rectangle::new(
+            self.camera.pos + Vector::new(-16.0, -16.0),
+            (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
+        );
+
+        for shot in &mut self.turret_shots {
+            // Collide the shot with the landscape.
+            if shot
+                .collision_lines
+                .intersects(&self.landscape.collision_lines)
+            {
+                shot.alive = false;
+            }
+
+            // Collide the shot with the player.
+            if shot
+                .collision_lines
+                .intersects(&self.player.collision_lines)
+            {
+                shot.alive = false;
+                self.player.alive = false;
+            }
+
+            // Check for the shot going out of bounds.
+            shot.alive = shot.alive && playfield.contains(shot.world_pos());
         }
     }
 
@@ -202,13 +235,15 @@ impl GameState for Playing {
         let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
 
         if self.player.alive {
-            self.camera.pos = self.camera.pos.translate((4, 0));
+            let forced_scroll = Vector::new(4, 0);
+
+            self.player.control(forced_scroll, dx, dy, d_theta);
             if fire {
-                let shot = Shot::new(self.player.pos, self.player.angle);
+                let shot = Shot::new(self.player.world_pos(), forced_scroll, self.player.angle);
                 self.shots.push(shot);
             }
+            self.camera.pos = self.camera.pos.translate(forced_scroll);
 
-            self.player.control(&self.camera, dx, dy, d_theta);
             self.landscape.update(&self.camera);
             if self.landscape.want_turret {
                 if let Some(last_line) = self.landscape.render_lines.last() {
@@ -221,16 +256,30 @@ impl GameState for Playing {
 
             for turret in &mut self.turrets {
                 turret.control(&self.camera);
+                if turret.is_firing {
+                    let shot = Shot::new(
+                        turret.world_pos() + Vector::new(0, -8),
+                        Vector::ZERO,
+                        turret.angle + 180.0,
+                    );
+                    self.turret_shots.push(shot);
+                }
             }
 
             for shot in &mut self.shots {
-                shot.control(&self.camera);
+                shot.control();
+            }
+
+            for shot in &mut self.turret_shots {
+                shot.control();
             }
 
             self.collide_player();
             self.collide_shots();
+            self.collide_turret_shots();
             self.shots.reap();
             self.turrets.reap();
+            self.turret_shots.reap();
         }
 
         let result = if quit { Quit } else { Continue };
@@ -247,6 +296,9 @@ impl GameState for Playing {
         }
         self.player.draw(&mut self.line_renderer);
         for shot in &self.shots {
+            shot.draw(&mut self.line_renderer);
+        }
+        for shot in &self.turret_shots {
             shot.draw(&mut self.line_renderer);
         }
         self.line_renderer.render(window);

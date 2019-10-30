@@ -6,5 +6,6 @@ mod player;
 mod playing;
 mod shot;
 mod turret;
+mod world_pos;
 
 pub use self::playing::Playing;

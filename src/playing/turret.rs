@@ -4,21 +4,33 @@ use crate::collision_lines::CollisionLines;
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
 
+use super::world_pos::WorldPos;
+
 use quicksilver::{
     geom::{Transform, Vector},
     graphics::Color,
 };
 
+use rand::{prelude::*, Rng};
+
 pub struct Turret {
     pos: Vector,
-    angle: f32,
+    pub(crate) angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
+    pub(crate) is_firing: bool,
+    rng: ThreadRng,
 }
 
 killable!(Turret);
+
+impl WorldPos for Turret {
+    fn world_pos(&self) -> Vector {
+        self.pos
+    }
+}
 
 impl Turret {
     pub(crate) fn new(pos: Vector, angle: f32) -> Self {
@@ -39,6 +51,8 @@ impl Turret {
             render_lines: Vec::with_capacity(length),
             collision_lines: CollisionLines::new(Vec::with_capacity(length)),
             alive: true,
+            is_firing: false,
+            rng: rand::thread_rng(),
         }
     }
 
@@ -53,6 +67,8 @@ impl Turret {
 
         self.collision_lines
             .update(transform, self.model_lines.iter().map(|line| line.line));
+
+        self.is_firing = self.rng.gen_range(0, 1000) < 10;
 
         if self.pos.x < camera.pos.x - 16.0 {
             self.kill();

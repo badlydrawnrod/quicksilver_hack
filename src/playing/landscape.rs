@@ -13,7 +13,7 @@ use rand::{prelude::*, Rng};
 
 const LANDSCAPE_MIN_Y: f32 = VIRTUAL_HEIGHT as f32 / 4.0;
 const LANDSCAPE_MAX_Y: f32 = VIRTUAL_HEIGHT as f32 - 8.0;
-const LANDSCAPE_MAX_DY: f32 = 80.0;
+const LANDSCAPE_MAX_DY: f32 = 128.0;
 const LANDSCAPE_STEP: f32 = 16.0;
 
 pub struct Landscape {
@@ -21,6 +21,7 @@ pub struct Landscape {
     pub(crate) collision_lines: CollisionLines,
     rng: ThreadRng,
     pub(crate) want_turret: bool,
+    flat: i32,
 }
 
 impl Landscape {
@@ -42,6 +43,7 @@ impl Landscape {
             collision_lines: CollisionLines::new(collision_lines),
             rng: rand::thread_rng(),
             want_turret: false,
+            flat: 0,
         }
     }
 
@@ -51,13 +53,18 @@ impl Landscape {
         self.want_turret = false;
         let b = self.render_lines[self.render_lines.len() - 1].line.b;
         if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 + camera.pos.x {
-            let new_y = if self.rng.gen_range(0, 100) >= 25 {
+            let new_y = if self.flat == 0 && self.rng.gen_range(0, 100) >= 25 {
                 let mut new_y = b.y + self.rng.gen_range(-LANDSCAPE_MAX_DY, LANDSCAPE_MAX_DY);
                 while new_y > LANDSCAPE_MAX_Y || new_y < LANDSCAPE_MIN_Y {
                     new_y = b.y + self.rng.gen_range(-64.0, 64.0);
                 }
                 new_y
             } else {
+                if self.flat == 0 {
+                    self.flat = 4;
+                } else {
+                    self.flat -= 1;
+                }
                 b.y
             };
             let next_point = Vector::new(b.x + LANDSCAPE_STEP, new_y);
@@ -65,7 +72,7 @@ impl Landscape {
                 .push(TintedLine::new(b, next_point, Color::GREEN));
 
             // Randomly add a turret if the conditions are right.
-            self.want_turret = self.rng.gen_range(0, 100) >= 50 && b.distance(next_point) > 50.0;
+            self.want_turret = self.flat == 2 && self.rng.gen_range(0, 100) >= 50;
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.

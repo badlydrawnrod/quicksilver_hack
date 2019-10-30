@@ -1,5 +1,5 @@
 use quicksilver::{
-    geom::{Transform, Vector},
+    geom::{Shape, Transform, Vector},
     graphics::Color,
 };
 
@@ -7,10 +7,10 @@ use crate::collision_lines::CollisionLines;
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
 
-use super::camera::Camera;
+use super::world_pos::WorldPos;
 
 pub struct Player {
-    pub(crate) pos: Vector,
+    pos: Vector,
     pub(crate) angle: f32,
     model_lines: Vec<TintedLine>,
     render_lines: Vec<TintedLine>,
@@ -19,6 +19,12 @@ pub struct Player {
 }
 
 killable!(Player);
+
+impl WorldPos for Player {
+    fn world_pos(&self) -> Vector {
+        self.pos
+    }
+}
 
 impl Player {
     pub fn new(pos: Vector, angle: f32) -> Self {
@@ -38,12 +44,15 @@ impl Player {
         }
     }
 
-    pub(crate) fn control(&mut self, camera: &Camera, dx: f32, dy: f32, rotate_by: f32) {
+    pub(crate) fn control(&mut self, forced_scroll: Vector, dx: f32, dy: f32, rotate_by: f32) {
         if !self.alive {
             return;
         }
 
-        // Update the position.
+        // The player always moves forward at a steady rate.
+        self.pos = self.pos.translate(forced_scroll);
+
+        // Apply movement due to input.
         if dx != 0.0 || dy != 0.0 {
             let movement = Vector::new(dx * 2.0, dy * 2.0);
             self.pos += movement;
@@ -55,7 +64,7 @@ impl Player {
         }
 
         // Update the transformed model from the original model.
-        let transform = Transform::translate(camera.pos + self.pos) * Transform::rotate(self.angle);
+        let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
         self.render_lines.clear();
         self.render_lines.extend(
             self.model_lines

@@ -1,14 +1,16 @@
-use super::camera::Camera;
 use crate::collision_lines::CollisionLines;
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
+
+use super::world_pos::WorldPos;
+
 use quicksilver::{
     geom::{Transform, Vector},
     graphics::Color,
 };
 
 pub struct Shot {
-    pub(crate) pos: Vector,
+    pos: Vector,
     angle: f32,
     velocity: Vector,
     model_lines: Vec<TintedLine>,
@@ -19,8 +21,14 @@ pub struct Shot {
 
 killable!(Shot);
 
+impl WorldPos for Shot {
+    fn world_pos(&self) -> Vector {
+        self.pos
+    }
+}
+
 impl Shot {
-    pub fn new(pos: Vector, angle: f32) -> Self {
+    pub fn new(pos: Vector, forced_scroll: Vector, angle: f32) -> Self {
         let lines = vec![
             TintedLine::new((-4, 4), (4, 4), Color::GREEN),
             TintedLine::new((4, 4), (0, -4), Color::GREEN),
@@ -31,7 +39,9 @@ impl Shot {
         Shot {
             pos,
             angle,
-            velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
+            velocity: Transform::translate(forced_scroll)
+                * Transform::rotate(angle)
+                * Vector::new(0.0, -8.0),
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
             collision_lines: CollisionLines::new(Vec::with_capacity(length)),
@@ -39,10 +49,10 @@ impl Shot {
         }
     }
 
-    pub fn control(&mut self, camera: &Camera) {
+    pub fn control(&mut self) {
         self.pos += self.velocity;
 
-        let transform = Transform::translate(camera.pos + self.pos) * Transform::rotate(self.angle);
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.render_lines.clear();
         self.render_lines.extend(
             self.model_lines
