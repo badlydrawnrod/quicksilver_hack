@@ -34,12 +34,13 @@ impl Player {
             TintedLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
         let length = lines.len();
+        let collision_lines = lines.iter().map(|line| line.line).collect::<Vec<_>>();
         Player {
             pos,
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
+            collision_lines: CollisionLines::new(collision_lines),
             alive: true,
         }
     }
@@ -72,8 +73,7 @@ impl Player {
                 .map(|line| line.transformed(transform)),
         );
 
-        self.collision_lines
-            .update(transform, self.model_lines.iter().map(|line| line.line));
+        self.collision_lines.update(transform);
     }
 
     /// Draw the player's ship to the given line renderer.

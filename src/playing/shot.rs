@@ -35,6 +35,7 @@ impl Shot {
             TintedLine::new((0, -4), (-4, 4), Color::GREEN),
             TintedLine::new((0, 0), (0, -8), Color::GREEN),
         ];
+        let collision_lines = lines.iter().map(|line| line.line).collect::<Vec<_>>();
         let length = lines.len();
         Shot {
             pos,
@@ -44,7 +45,7 @@ impl Shot {
                 * Vector::new(0.0, -8.0),
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines::new(Vec::with_capacity(length)),
+            collision_lines: CollisionLines::new(collision_lines),
             alive: true,
         }
     }
@@ -60,8 +61,7 @@ impl Shot {
                 .map(|line| line.transformed(transform)),
         );
 
-        self.collision_lines
-            .update(transform, self.model_lines.iter().map(|line| line.line));
+        self.collision_lines.update(transform);
     }
 
     /// Draw the shot to the given line renderer.

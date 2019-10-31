@@ -169,7 +169,7 @@ impl Playing {
         }
     }
 
-    // Collide the turret shots and check for them going out of bounds.
+    /// Collide the turret shots and check for them going out of bounds.
     fn collide_turret_shots(&mut self) {
         let playfield = Rectangle::new(
             self.camera.pos + Vector::new(-16.0, -16.0),

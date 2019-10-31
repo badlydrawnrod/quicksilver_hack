@@ -81,7 +81,7 @@ impl Landscape {
             self.render_lines.remove(0);
         }
 
-        self.collision_lines.update(
+        self.collision_lines.reset(
             Transform::IDENTITY,
             self.render_lines.iter().map(|line| line.line),
         );
