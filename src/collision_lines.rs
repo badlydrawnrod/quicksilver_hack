@@ -1,6 +1,5 @@
 use crate::transformed::Transformable;
 use quicksilver::geom::{Line, Shape, Transform};
-use std::borrow::Borrow;
 
 pub struct CollisionLines {
     model: Vec<Line>,
