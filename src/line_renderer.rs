@@ -1,4 +1,4 @@
-const LINE_THICKNESS: f32 = 8.0;
+const LINE_THICKNESS: f32 = 9.0;
 
 use quicksilver::{
     geom::{Line, Transform, Vector},
@@ -24,7 +24,7 @@ impl TintedLine {
     /// Create a tinted line from a start and end vector, and a colour.
     pub fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
         TintedLine {
-            line: Line::new(start, end),
+            line: Line::new(start, end).with_thickness(LINE_THICKNESS),
             colour: colour.into(),
         }
     }
@@ -111,7 +111,7 @@ impl LineRenderer {
         }
     }
 
-    /// Clear all lines from this renderer's mesh.
+    /// Clear all lines from this line renderer's mesh.
     pub(crate) fn clear(&mut self) {
         self.mesh.clear();
     }
@@ -120,8 +120,8 @@ impl LineRenderer {
     pub(crate) fn add_lines<'a>(&mut self, lines: impl Iterator<Item = &'a TintedLine>) {
         let identity = Transform::IDENTITY;
         for tinted_line in lines {
-            let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
-            thick_line.draw(
+            let line = tinted_line.line;
+            line.draw(
                 self.mesh.borrow_mut(),
                 Blended(&self.image, tinted_line.colour),
                 identity,
@@ -130,6 +130,7 @@ impl LineRenderer {
         }
     }
 
+    /// Add the given model, transformed, to this line renderer's mesh.
     pub(crate) fn add_model(&mut self, render_model: RenderModel, transform: Transform) {
         let transformed = render_model
             .lines
@@ -137,8 +138,8 @@ impl LineRenderer {
             .map(|line| line.transformed(transform));
         let identity = Transform::IDENTITY;
         for tinted_line in transformed {
-            let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
-            thick_line.draw(
+            let line = tinted_line.line;
+            line.draw(
                 self.mesh.borrow_mut(),
                 Blended(&self.image, tinted_line.colour),
                 identity,
