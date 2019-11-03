@@ -68,35 +68,27 @@ impl CollisionAssets {
 
 #[derive(Clone)]
 pub struct CollisionLines {
-    model: CollisionModel,
-    transformed: Vec<Line>,
+    lines: Vec<Line>,
 }
 
 impl CollisionLines {
-    pub(crate) fn new(model: CollisionModel) -> Self {
-        CollisionLines {
-            model: model.clone(),
-            transformed: Vec::new(),
-        }
+    pub(crate) fn new() -> Self {
+        CollisionLines { lines: Vec::new() }
     }
 
-    pub(crate) fn new_from_lines(lines: Vec<Line>) -> Self {
-        CollisionLines {
-            model: CollisionModel::new(lines),
-            transformed: Vec::new(),
-        }
+    /// Clear all the lines from this collision object.
+    pub(crate) fn clear(&mut self) {
+        self.lines.clear();
     }
 
-    pub(crate) fn reset(&mut self, transform: Transform, lines: impl Iterator<Item = Line>) {
-        self.transformed.clear();
-        self.transformed
+    pub(crate) fn add_lines(&mut self, transform: Transform, lines: impl Iterator<Item = Line>) {
+        self.lines
             .extend(lines.map(|line| line.transformed(transform)));
     }
 
-    pub(crate) fn update(&mut self, transform: Transform) {
-        self.transformed.clear();
-        self.transformed.extend(
-            self.model
+    pub(crate) fn add_model(&mut self, collision_model: CollisionModel, transform: Transform) {
+        self.lines.extend(
+            collision_model
                 .lines
                 .iter()
                 .map(|line| line.transformed(transform)),
@@ -104,8 +96,8 @@ impl CollisionLines {
     }
 
     pub fn intersects(&self, other: &CollisionLines) -> bool {
-        for line_a in &self.transformed {
-            for line_b in &other.transformed {
+        for line_a in &self.lines {
+            for line_b in &other.lines {
                 if line_a.intersects(&line_b) {
                     return true;
                 }

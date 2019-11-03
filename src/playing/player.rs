@@ -9,6 +9,7 @@ pub struct Player {
     pos: Vector,
     pub(crate) angle: f32,
     render_model: RenderModel,
+    collision_model: CollisionModel,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
 }
@@ -32,7 +33,8 @@ impl Player {
             pos,
             angle,
             render_model: render_model,
-            collision_lines: CollisionLines::new(collision_model),
+            collision_model: collision_model,
+            collision_lines: CollisionLines::new(),
             alive: true,
         }
     }
@@ -58,8 +60,9 @@ impl Player {
 
         // Update the transformed model from the original model.
         let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
-
-        self.collision_lines.update(transform);
+        self.collision_lines.clear();
+        self.collision_lines
+            .add_model(self.collision_model.clone(), transform);
     }
 
     /// Draw the player's ship to the given line renderer.

@@ -10,6 +10,7 @@ pub struct Shot {
     angle: f32,
     velocity: Vector,
     render_model: RenderModel,
+    collision_model: CollisionModel,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
 }
@@ -37,7 +38,8 @@ impl Shot {
                 * Transform::rotate(angle)
                 * Vector::new(0.0, -8.0),
             render_model: render_model,
-            collision_lines: CollisionLines::new(collision_model),
+            collision_model: collision_model,
+            collision_lines: CollisionLines::new(),
             alive: true,
         }
     }
@@ -45,7 +47,9 @@ impl Shot {
     pub fn control(&mut self) {
         self.pos += self.velocity;
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        self.collision_lines.update(transform);
+        self.collision_lines.clear();
+        self.collision_lines
+            .add_model(self.collision_model.clone(), transform);
     }
 
     /// Draw the shot to the given line renderer.

@@ -13,6 +13,7 @@ pub struct Turret {
     pos: Vector,
     pub(crate) angle: f32,
     render_model: RenderModel,
+    collision_model: CollisionModel,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
     pub(crate) is_firing: bool,
@@ -38,7 +39,8 @@ impl Turret {
             pos,
             angle,
             render_model: render_model,
-            collision_lines: CollisionLines::new(collision_model),
+            collision_model: collision_model,
+            collision_lines: CollisionLines::new(),
             alive: true,
             is_firing: false,
             rng: rand::thread_rng(),
@@ -47,7 +49,9 @@ impl Turret {
 
     pub(crate) fn control(&mut self, camera: &Camera) {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        self.collision_lines.update(transform);
+        self.collision_lines.clear();
+        self.collision_lines
+            .add_model(self.collision_model.clone(), transform);
 
         self.is_firing = self.rng.gen_range(0, 1000) < 10;
 

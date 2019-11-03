@@ -40,7 +40,7 @@ impl Landscape {
         }
         Landscape {
             render_lines,
-            collision_lines: CollisionLines::new_from_lines(collision_lines),
+            collision_lines: CollisionLines::new(),
             rng: rand::thread_rng(),
             want_turret: false,
             flat: 0,
@@ -81,7 +81,8 @@ impl Landscape {
             self.render_lines.remove(0);
         }
 
-        self.collision_lines.reset(
+        self.collision_lines.clear();
+        self.collision_lines.add_lines(
             Transform::IDENTITY,
             self.render_lines.iter().map(|line| line.line),
         );
