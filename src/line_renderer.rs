@@ -117,7 +117,7 @@ impl LineRenderer {
     }
 
     /// Add the given lines to this renderer's mesh.
-    pub(crate) fn add_lines<'a>(&mut self, lines: impl Iterator<Item = &'a TintedLine>) {
+    pub(crate) fn add_lines(&mut self, lines: impl Iterator<Item = TintedLine>) {
         let identity = Transform::IDENTITY;
         for tinted_line in lines {
             let line = tinted_line.line;
@@ -136,16 +136,7 @@ impl LineRenderer {
             .lines
             .iter()
             .map(|line| line.transformed(transform));
-        let identity = Transform::IDENTITY;
-        for tinted_line in transformed {
-            let line = tinted_line.line;
-            line.draw(
-                self.mesh.borrow_mut(),
-                Blended(&self.image, tinted_line.colour),
-                identity,
-                0.0,
-            );
-        }
+        self.add_lines(transformed);
     }
 
     /// Render the mesh to a window.

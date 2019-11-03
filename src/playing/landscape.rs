@@ -89,6 +89,6 @@ impl Landscape {
 
     /// Draw the landscape to the given line renderer.
     pub fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.add_lines(self.render_lines.iter());
+        line_renderer.add_lines(self.render_lines.iter().cloned());
     }
 }
