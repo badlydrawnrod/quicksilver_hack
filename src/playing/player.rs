@@ -1,19 +1,14 @@
-use quicksilver::{
-    geom::{Shape, Transform, Vector},
-    graphics::Color,
-};
+use quicksilver::geom::{Shape, Transform, Vector};
 
 use crate::collision_lines::{CollisionLines, CollisionModel};
-use crate::line_renderer::{LineRenderer, TintedLine};
-use crate::transformed::Transformable;
+use crate::line_renderer::{LineRenderer, RenderModel};
 
 use super::world_pos::WorldPos;
 
 pub struct Player {
     pos: Vector,
     pub(crate) angle: f32,
-    model_lines: Vec<TintedLine>,
-    render_lines: Vec<TintedLine>,
+    render_model: RenderModel,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
 }
@@ -27,18 +22,16 @@ impl WorldPos for Player {
 }
 
 impl Player {
-    pub fn new(collision_model: CollisionModel, pos: Vector, angle: f32) -> Self {
-        let lines = vec![
-            TintedLine::new((-16, 16), (16, 16), Color::GREEN),
-            TintedLine::new((16, 16), (0, -16), Color::GREEN),
-            TintedLine::new((0, -16), (-16, 16), Color::GREEN),
-        ];
-        let length = lines.len();
+    pub fn new(
+        render_model: RenderModel,
+        collision_model: CollisionModel,
+        pos: Vector,
+        angle: f32,
+    ) -> Self {
         Player {
             pos,
             angle,
-            model_lines: lines,
-            render_lines: Vec::with_capacity(length),
+            render_model: render_model,
             collision_lines: CollisionLines::new(collision_model),
             alive: true,
         }
@@ -65,12 +58,6 @@ impl Player {
 
         // Update the transformed model from the original model.
         let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
-        self.render_lines.clear();
-        self.render_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.transformed(transform)),
-        );
 
         self.collision_lines.update(transform);
     }
@@ -78,7 +65,8 @@ impl Player {
     /// Draw the player's ship to the given line renderer.
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
         if self.alive {
-            line_renderer.add_lines(self.render_lines.iter());
+            let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
+            line_renderer.add_model(self.render_model.clone(), transform);
         }
     }
 }

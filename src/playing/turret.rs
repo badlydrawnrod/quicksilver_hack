@@ -1,23 +1,18 @@
 use super::camera::Camera;
 use super::killable::Kill;
 use crate::collision_lines::{CollisionLines, CollisionModel};
-use crate::line_renderer::{LineRenderer, TintedLine};
-use crate::transformed::Transformable;
+use crate::line_renderer::{LineRenderer, RenderModel};
 
 use super::world_pos::WorldPos;
 
-use quicksilver::{
-    geom::{Transform, Vector},
-    graphics::Color,
-};
+use quicksilver::geom::{Transform, Vector};
 
 use rand::{prelude::*, Rng};
 
 pub struct Turret {
     pos: Vector,
     pub(crate) angle: f32,
-    model_lines: Vec<TintedLine>,
-    render_lines: Vec<TintedLine>,
+    render_model: RenderModel,
     pub(crate) collision_lines: CollisionLines,
     pub(crate) alive: bool,
     pub(crate) is_firing: bool,
@@ -33,22 +28,16 @@ impl WorldPos for Turret {
 }
 
 impl Turret {
-    pub(crate) fn new(collision_model: CollisionModel, pos: Vector, angle: f32) -> Self {
-        let lines = vec![
-            TintedLine::new((-16, 0), (16, 0), Color::GREEN),
-            TintedLine::new((-16, 0), (-12, 16), Color::GREEN),
-            TintedLine::new((-12, 16), (-4, 16), Color::GREEN),
-            TintedLine::new((-4, 16), (0, 24), Color::GREEN),
-            TintedLine::new((0, 24), (4, 16), Color::GREEN),
-            TintedLine::new((-4, 16), (12, 16), Color::GREEN),
-            TintedLine::new((12, 16), (16, 0), Color::GREEN),
-        ];
-        let length = lines.len();
+    pub(crate) fn new(
+        render_model: RenderModel,
+        collision_model: CollisionModel,
+        pos: Vector,
+        angle: f32,
+    ) -> Self {
         Turret {
             pos,
             angle,
-            model_lines: lines,
-            render_lines: Vec::with_capacity(length),
+            render_model: render_model,
             collision_lines: CollisionLines::new(collision_model),
             alive: true,
             is_firing: false,
@@ -58,12 +47,6 @@ impl Turret {
 
     pub(crate) fn control(&mut self, camera: &Camera) {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        self.render_lines.clear();
-        self.render_lines.extend(
-            self.model_lines
-                .iter()
-                .map(|line| line.transformed(transform)),
-        );
         self.collision_lines.update(transform);
 
         self.is_firing = self.rng.gen_range(0, 1000) < 10;
@@ -75,6 +58,7 @@ impl Turret {
 
     /// Draw the turret to the given line renderer.
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
-        line_renderer.add_lines(self.render_lines.iter());
+        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+        line_renderer.add_model(self.render_model.clone(), transform);
     }
 }

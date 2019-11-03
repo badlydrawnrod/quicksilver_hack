@@ -15,12 +15,6 @@ impl CollisionModel {
     }
 }
 
-#[derive(Clone)]
-pub struct CollisionLines {
-    model: CollisionModel,
-    transformed: Vec<Line>,
-}
-
 pub struct CollisionAssets {
     shot: CollisionModel,
     turret: CollisionModel,
@@ -70,6 +64,12 @@ impl CollisionAssets {
     pub fn player(&self) -> CollisionModel {
         self.player.clone()
     }
+}
+
+#[derive(Clone)]
+pub struct CollisionLines {
+    model: CollisionModel,
+    transformed: Vec<Line>,
 }
 
 impl CollisionLines {

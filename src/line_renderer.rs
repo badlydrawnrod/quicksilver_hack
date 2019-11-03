@@ -7,11 +7,13 @@ use quicksilver::{
     prelude::Blended,
 };
 
+use crate::transformed::Transformable;
 use std::borrow::BorrowMut;
+use std::rc::Rc;
 
 #[derive(Copy, Clone)]
 /// A line with a colour.
-pub(crate) struct TintedLine {
+pub struct TintedLine {
     /// The line.
     pub line: Line,
     /// The line's colour.
@@ -20,15 +22,75 @@ pub(crate) struct TintedLine {
 
 impl TintedLine {
     /// Create a tinted line from a start and end vector, and a colour.
-    pub(crate) fn new(
-        start: impl Into<Vector>,
-        end: impl Into<Vector>,
-        colour: impl Into<Color>,
-    ) -> Self {
+    pub fn new(start: impl Into<Vector>, end: impl Into<Vector>, colour: impl Into<Color>) -> Self {
         TintedLine {
             line: Line::new(start, end),
             colour: colour.into(),
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct RenderModel {
+    lines: Rc<Vec<TintedLine>>,
+}
+
+impl RenderModel {
+    pub fn new(lines: Vec<TintedLine>) -> Self {
+        RenderModel {
+            lines: Rc::new(lines),
+        }
+    }
+}
+
+pub struct RenderAssets {
+    shot: RenderModel,
+    turret: RenderModel,
+    player: RenderModel,
+}
+
+impl RenderAssets {
+    pub fn new() -> Self {
+        let shot_lines = vec![
+            TintedLine::new((-4, 4), (4, 4), Color::GREEN),
+            TintedLine::new((4, 4), (0, -4), Color::GREEN),
+            TintedLine::new((0, -4), (-4, 4), Color::GREEN),
+            TintedLine::new((0, 0), (0, -8), Color::GREEN),
+        ];
+
+        let turret_lines = vec![
+            TintedLine::new((-16, 0), (16, 0), Color::GREEN),
+            TintedLine::new((-16, 0), (-12, 16), Color::GREEN),
+            TintedLine::new((-12, 16), (-4, 16), Color::GREEN),
+            TintedLine::new((-4, 16), (0, 24), Color::GREEN),
+            TintedLine::new((0, 24), (4, 16), Color::GREEN),
+            TintedLine::new((-4, 16), (12, 16), Color::GREEN),
+            TintedLine::new((12, 16), (16, 0), Color::GREEN),
+        ];
+
+        let player_lines = vec![
+            TintedLine::new((-16, 16), (16, 16), Color::GREEN),
+            TintedLine::new((16, 16), (0, -16), Color::GREEN),
+            TintedLine::new((0, -16), (-16, 16), Color::GREEN),
+        ];
+
+        RenderAssets {
+            shot: RenderModel::new(shot_lines),
+            turret: RenderModel::new(turret_lines),
+            player: RenderModel::new(player_lines),
+        }
+    }
+
+    pub fn shot(&self) -> RenderModel {
+        self.shot.clone()
+    }
+
+    pub fn turret(&self) -> RenderModel {
+        self.turret.clone()
+    }
+
+    pub fn player(&self) -> RenderModel {
+        self.player.clone()
     }
 }
 
@@ -58,6 +120,23 @@ impl LineRenderer {
     pub(crate) fn add_lines<'a>(&mut self, lines: impl Iterator<Item = &'a TintedLine>) {
         let identity = Transform::IDENTITY;
         for tinted_line in lines {
+            let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
+            thick_line.draw(
+                self.mesh.borrow_mut(),
+                Blended(&self.image, tinted_line.colour),
+                identity,
+                0.0,
+            );
+        }
+    }
+
+    pub(crate) fn add_model(&mut self, render_model: RenderModel, transform: Transform) {
+        let transformed = render_model
+            .lines
+            .iter()
+            .map(|line| line.transformed(transform));
+        let identity = Transform::IDENTITY;
+        for tinted_line in transformed {
             let thick_line = tinted_line.line.with_thickness(LINE_THICKNESS);
             thick_line.draw(
                 self.mesh.borrow_mut(),
