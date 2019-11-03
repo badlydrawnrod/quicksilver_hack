@@ -40,7 +40,7 @@ impl Landscape {
         }
         Landscape {
             render_lines,
-            collision_lines: CollisionLines::new(collision_lines),
+            collision_lines: CollisionLines::new_from_lines(collision_lines),
             rng: rand::thread_rng(),
             want_turret: false,
             flat: 0,

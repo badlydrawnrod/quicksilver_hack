@@ -3,7 +3,7 @@ use quicksilver::{
     graphics::Color,
 };
 
-use crate::collision_lines::CollisionLines;
+use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
 
@@ -27,20 +27,19 @@ impl WorldPos for Player {
 }
 
 impl Player {
-    pub fn new(pos: Vector, angle: f32) -> Self {
+    pub fn new(collision_model: CollisionModel, pos: Vector, angle: f32) -> Self {
         let lines = vec![
             TintedLine::new((-16, 16), (16, 16), Color::GREEN),
             TintedLine::new((16, 16), (0, -16), Color::GREEN),
             TintedLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
         let length = lines.len();
-        let collision_lines = lines.iter().map(|line| line.line).collect::<Vec<_>>();
         Player {
             pos,
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines::new(collision_lines),
+            collision_lines: CollisionLines::new(collision_model),
             alive: true,
         }
     }

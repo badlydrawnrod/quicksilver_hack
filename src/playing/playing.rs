@@ -15,6 +15,7 @@ use quicksilver::{
     Result,
 };
 
+use crate::collision_lines::CollisionAssets;
 use crate::constants::*;
 use crate::game_state::{
     Action,
@@ -34,6 +35,7 @@ pub struct Playing {
     turret_shots: Vec<Shot>,
     gilrs: Gilrs,
     active_gamepad: Option<GamepadId>,
+    collision_assets: CollisionAssets,
 }
 
 impl Playing {
@@ -45,18 +47,24 @@ impl Playing {
             landscape.push(Line::new(last_point, next_point));
             last_point = next_point;
         }
+        let collision_assets = CollisionAssets::new();
         Ok(Self {
             camera: Camera {
                 pos: Vector::new(0, 0),
             },
             line_renderer: LineRenderer::new(line_images[0].clone()),
-            player: Player::new(Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4), 90.0),
+            player: Player::new(
+                collision_assets.player(),
+                Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4),
+                90.0,
+            ),
             landscape: Landscape::new(),
             shots: Vec::new(),
             turrets: Vec::new(),
             turret_shots: Vec::new(),
             gilrs: Gilrs::new()?,
             active_gamepad: None,
+            collision_assets: collision_assets,
         })
     }
 
@@ -239,7 +247,12 @@ impl GameState for Playing {
 
             self.player.control(forced_scroll, dx, dy, d_theta);
             if fire {
-                let shot = Shot::new(self.player.world_pos(), forced_scroll, self.player.angle);
+                let shot = Shot::new(
+                    self.collision_assets.shot(),
+                    self.player.world_pos(),
+                    forced_scroll,
+                    self.player.angle,
+                );
                 self.shots.push(shot);
             }
             self.camera.pos = self.camera.pos.translate(forced_scroll);
@@ -249,7 +262,7 @@ impl GameState for Playing {
                 if let Some(last_line) = self.landscape.render_lines.last() {
                     let angle = (last_line.line.a - last_line.line.b).angle();
                     let midpoint = last_line.line.center();
-                    let turret = Turret::new(midpoint, angle);
+                    let turret = Turret::new(self.collision_assets.turret(), midpoint, angle);
                     self.turrets.push(turret);
                 }
             }
@@ -258,6 +271,7 @@ impl GameState for Playing {
                 turret.control(&self.camera);
                 if turret.is_firing {
                     let shot = Shot::new(
+                        self.collision_assets.shot(),
                         turret.world_pos() + Vector::new(0, -8),
                         Vector::ZERO,
                         turret.angle + 180.0,

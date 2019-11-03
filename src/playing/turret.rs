@@ -1,6 +1,6 @@
 use super::camera::Camera;
 use super::killable::Kill;
-use crate::collision_lines::CollisionLines;
+use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, TintedLine};
 use crate::transformed::Transformable;
 
@@ -33,7 +33,7 @@ impl WorldPos for Turret {
 }
 
 impl Turret {
-    pub(crate) fn new(pos: Vector, angle: f32) -> Self {
+    pub(crate) fn new(collision_model: CollisionModel, pos: Vector, angle: f32) -> Self {
         let lines = vec![
             TintedLine::new((-16, 0), (16, 0), Color::GREEN),
             TintedLine::new((-16, 0), (-12, 16), Color::GREEN),
@@ -43,14 +43,13 @@ impl Turret {
             TintedLine::new((-4, 16), (12, 16), Color::GREEN),
             TintedLine::new((12, 16), (16, 0), Color::GREEN),
         ];
-        let collision_lines = lines.iter().map(|line| line.line).collect::<Vec<_>>();
         let length = lines.len();
         Turret {
             pos,
             angle,
             model_lines: lines,
             render_lines: Vec::with_capacity(length),
-            collision_lines: CollisionLines::new(collision_lines),
+            collision_lines: CollisionLines::new(collision_model),
             alive: true,
             is_firing: false,
             rng: rand::thread_rng(),
