@@ -162,7 +162,7 @@ impl Playing {
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             if shot
-                .collision_lines
+                .collision_lines()
                 .intersects(&self.landscape.collision_lines())
             {
                 shot.alive = false;
@@ -170,7 +170,7 @@ impl Playing {
 
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
-                if shot.collision_lines.intersects(&turret.collision_lines()) {
+                if shot.collision_lines().intersects(&turret.collision_lines()) {
                     shot.alive = false;
                     turret.alive = false;
                 }
@@ -191,7 +191,7 @@ impl Playing {
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.
             if shot
-                .collision_lines
+                .collision_lines()
                 .intersects(&self.landscape.collision_lines())
             {
                 shot.alive = false;
@@ -199,7 +199,7 @@ impl Playing {
 
             // Collide the shot with the player.
             if shot
-                .collision_lines
+                .collision_lines()
                 .intersects(&self.player.collision_lines())
             {
                 shot.alive = false;

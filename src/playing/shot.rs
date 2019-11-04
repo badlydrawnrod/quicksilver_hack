@@ -11,7 +11,7 @@ pub struct Shot {
     velocity: Vector,
     render_model: RenderModel,
     collision_model: CollisionModel,
-    pub(crate) collision_lines: CollisionLines,
+    collision_lines: CollisionLines,
     pub(crate) alive: bool,
 }
 
@@ -56,5 +56,9 @@ impl Shot {
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         line_renderer.add_model(self.render_model.clone(), transform);
+    }
+
+    pub fn collision_lines(&self) -> &CollisionLines {
+        &self.collision_lines
     }
 }
