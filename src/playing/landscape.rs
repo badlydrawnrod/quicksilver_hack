@@ -18,7 +18,7 @@ const LANDSCAPE_STEP: f32 = 16.0;
 
 pub struct Landscape {
     pub(crate) render_lines: Vec<TintedLine>,
-    pub(crate) collision_lines: CollisionLines,
+    collision_lines: CollisionLines,
     rng: ThreadRng,
     pub(crate) want_turret: bool,
     flat: i32,
@@ -91,5 +91,9 @@ impl Landscape {
     /// Draw the landscape to the given line renderer.
     pub fn draw(&self, line_renderer: &mut LineRenderer) {
         line_renderer.add_lines(self.render_lines.iter().cloned());
+    }
+
+    pub fn collision_lines(&self) -> &CollisionLines {
+        &self.collision_lines
     }
 }

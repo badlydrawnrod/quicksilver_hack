@@ -10,7 +10,7 @@ pub struct Player {
     pub(crate) angle: f32,
     render_model: RenderModel,
     collision_model: CollisionModel,
-    pub(crate) collision_lines: CollisionLines,
+    collision_lines: CollisionLines,
     pub(crate) alive: bool,
 }
 
@@ -71,5 +71,9 @@ impl Player {
             let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
             line_renderer.add_model(self.render_model.clone(), transform);
         }
+    }
+
+    pub fn collision_lines(&self) -> &CollisionLines {
+        &self.collision_lines
     }
 }

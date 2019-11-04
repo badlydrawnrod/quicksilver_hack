@@ -163,14 +163,14 @@ impl Playing {
             // Collide the shot with the landscape.
             if shot
                 .collision_lines
-                .intersects(&self.landscape.collision_lines)
+                .intersects(&self.landscape.collision_lines())
             {
                 shot.alive = false;
             }
 
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
-                if shot.collision_lines.intersects(&turret.collision_lines) {
+                if shot.collision_lines.intersects(&turret.collision_lines()) {
                     shot.alive = false;
                     turret.alive = false;
                 }
@@ -192,7 +192,7 @@ impl Playing {
             // Collide the shot with the landscape.
             if shot
                 .collision_lines
-                .intersects(&self.landscape.collision_lines)
+                .intersects(&self.landscape.collision_lines())
             {
                 shot.alive = false;
             }
@@ -200,7 +200,7 @@ impl Playing {
             // Collide the shot with the player.
             if shot
                 .collision_lines
-                .intersects(&self.player.collision_lines)
+                .intersects(&self.player.collision_lines())
             {
                 shot.alive = false;
                 self.player.alive = false;
@@ -216,8 +216,8 @@ impl Playing {
         // Collide the player with the landscape.
         if self
             .player
-            .collision_lines
-            .intersects(&self.landscape.collision_lines)
+            .collision_lines()
+            .intersects(&self.landscape.collision_lines())
         {
             self.player.alive = false;
         }
@@ -226,8 +226,8 @@ impl Playing {
         for turret in &mut self.turrets {
             if self
                 .player
-                .collision_lines
-                .intersects(&turret.collision_lines)
+                .collision_lines()
+                .intersects(&turret.collision_lines())
             {
                 self.player.alive = false;
                 turret.alive = false;
