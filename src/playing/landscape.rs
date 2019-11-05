@@ -92,8 +92,10 @@ impl Landscape {
     pub fn draw(&self, line_renderer: &mut LineRenderer) {
         line_renderer.add_lines(self.render_lines.iter().cloned());
     }
+}
 
-    pub fn collision_lines(&self) -> &CollisionLines {
+impl AsRef<CollisionLines> for Landscape {
+    fn as_ref(&self) -> &CollisionLines {
         &self.collision_lines
     }
 }

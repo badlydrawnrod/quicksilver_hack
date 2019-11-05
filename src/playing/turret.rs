@@ -65,8 +65,10 @@ impl Turret {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         line_renderer.add_model(self.render_model.clone(), transform);
     }
+}
 
-    pub fn collision_lines(&self) -> &CollisionLines {
+impl AsRef<CollisionLines> for Turret {
+    fn as_ref(&self) -> &CollisionLines {
         &self.collision_lines
     }
 }

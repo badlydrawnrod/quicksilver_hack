@@ -15,7 +15,7 @@ use quicksilver::{
     Result,
 };
 
-use crate::collision_lines::CollisionAssets;
+use crate::collision_lines::{collides_with, CollisionAssets};
 use crate::constants::*;
 use crate::game_state::{
     Action,
@@ -161,16 +161,13 @@ impl Playing {
 
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
-            if shot
-                .collision_lines()
-                .intersects(&self.landscape.collision_lines())
-            {
+            if collides_with(&shot, &self.landscape) {
                 shot.alive = false;
             }
 
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
-                if shot.collision_lines().intersects(&turret.collision_lines()) {
+                if collides_with(&shot, &turret) {
                     shot.alive = false;
                     turret.alive = false;
                 }
@@ -190,18 +187,12 @@ impl Playing {
 
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.
-            if shot
-                .collision_lines()
-                .intersects(&self.landscape.collision_lines())
-            {
+            if collides_with(&shot, &self.landscape) {
                 shot.alive = false;
             }
 
             // Collide the shot with the player.
-            if shot
-                .collision_lines()
-                .intersects(&self.player.collision_lines())
-            {
+            if collides_with(&shot, &self.player) {
                 shot.alive = false;
                 self.player.alive = false;
             }
@@ -214,21 +205,13 @@ impl Playing {
     /// Collide the player.
     fn collide_player(&mut self) {
         // Collide the player with the landscape.
-        if self
-            .player
-            .collision_lines()
-            .intersects(&self.landscape.collision_lines())
-        {
+        if collides_with(&self.player, &self.landscape) {
             self.player.alive = false;
         }
 
         // Collide the player with the turrets.
         for turret in &mut self.turrets {
-            if self
-                .player
-                .collision_lines()
-                .intersects(&turret.collision_lines())
-            {
+            if collides_with(&self.player, &turret) {
                 self.player.alive = false;
                 turret.alive = false;
             }

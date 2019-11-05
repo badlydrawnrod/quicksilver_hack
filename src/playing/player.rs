@@ -72,8 +72,10 @@ impl Player {
             line_renderer.add_model(self.render_model.clone(), transform);
         }
     }
+}
 
-    pub fn collision_lines(&self) -> &CollisionLines {
+impl AsRef<CollisionLines> for Player {
+    fn as_ref(&self) -> &CollisionLines {
         &self.collision_lines
     }
 }

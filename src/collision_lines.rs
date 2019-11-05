@@ -94,15 +94,17 @@ impl CollisionLines {
                 .map(|line| line.transformed(transform)),
         );
     }
+}
 
-    pub fn intersects(&self, other: &CollisionLines) -> bool {
-        for line_a in &self.lines {
-            for line_b in &other.lines {
-                if line_a.intersects(&line_b) {
-                    return true;
-                }
+pub fn collides_with(a: impl AsRef<CollisionLines>, b: impl AsRef<CollisionLines>) -> bool {
+    let a_lines = &a.as_ref().lines;
+    let b_lines = &b.as_ref().lines;
+    for line_a in a_lines {
+        for line_b in b_lines {
+            if line_a.intersects(&line_b) {
+                return true;
             }
         }
-        false
     }
+    false
 }
