@@ -23,8 +23,8 @@ use crate::game_state::{
     GameState,
 };
 use crate::line_renderer::{LineRenderer, RenderAssets};
-use crate::playing::world_pos::WorldPos;
 use crate::playing::landscape::LandscapeAction::MakeTurret;
+use crate::playing::world_pos::WorldPos;
 
 pub struct Playing {
     camera: Camera,
@@ -257,7 +257,7 @@ impl GameState for Playing {
                         angle,
                     );
                     self.turrets.push(turret);
-                },
+                }
                 _ => {}
             }
 
