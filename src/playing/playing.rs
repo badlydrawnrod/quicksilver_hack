@@ -241,7 +241,7 @@ impl GameState for Playing {
                     self.collision_assets.shot(),
                     self.player.world_pos(),
                     forced_scroll,
-                    self.player.angle,
+                    self.player.angle(),
                 );
                 self.shots.push(shot);
             }

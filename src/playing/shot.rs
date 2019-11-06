@@ -21,6 +21,9 @@ impl WorldPos for Shot {
     fn world_pos(&self) -> Vector {
         self.pos
     }
+    fn angle(&self) -> f32 {
+        self.angle
+    }
 }
 
 impl Shot {

@@ -7,7 +7,7 @@ use super::world_pos::WorldPos;
 
 pub struct Player {
     pos: Vector,
-    pub(crate) angle: f32, // TODO: make private
+    angle: f32,
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
@@ -19,6 +19,9 @@ killable!(Player);
 impl WorldPos for Player {
     fn world_pos(&self) -> Vector {
         self.pos
+    }
+    fn angle(&self) -> f32 {
+        self.angle
     }
 }
 
