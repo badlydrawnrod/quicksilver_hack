@@ -7,11 +7,11 @@ use super::world_pos::WorldPos;
 
 pub struct Player {
     pos: Vector,
-    pub(crate) angle: f32,
+    pub(crate) angle: f32,              // TODO: make private
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    pub(crate) alive: bool,
+    pub(crate) alive: bool,             // TODO: make private
 }
 
 killable!(Player);

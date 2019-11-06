@@ -11,12 +11,12 @@ use rand::{prelude::*, Rng};
 
 pub struct Turret {
     pos: Vector,
-    pub(crate) angle: f32,
+    pub(crate) angle: f32,              // TODO: make private
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    pub(crate) alive: bool,
-    pub(crate) is_firing: bool,
+    pub(crate) alive: bool,             // TODO: make private
+    pub(crate) is_firing: bool,         // TODO: make private / remove
     rng: ThreadRng,
 }
 

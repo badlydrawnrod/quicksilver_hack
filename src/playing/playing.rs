@@ -24,6 +24,7 @@ use crate::game_state::{
 };
 use crate::line_renderer::{LineRenderer, RenderAssets};
 use crate::playing::world_pos::WorldPos;
+use crate::playing::landscape::LandscapeAction::MakeTurret;
 
 pub struct Playing {
     camera: Camera,
@@ -245,11 +246,10 @@ impl GameState for Playing {
             }
             self.camera.pos = self.camera.pos.translate(forced_scroll);
 
-            self.landscape.update(&self.camera);
-            if self.landscape.want_turret {
-                if let Some(last_line) = self.landscape.render_lines.last() {
-                    let angle = (last_line.line.a - last_line.line.b).angle();
-                    let midpoint = last_line.line.center();
+            match self.landscape.update(&self.camera) {
+                MakeTurret(line) => {
+                    let angle = (line.a - line.b).angle();
+                    let midpoint = line.center();
                     let turret = Turret::new(
                         self.render_assets.turret(),
                         self.collision_assets.turret(),
@@ -257,7 +257,8 @@ impl GameState for Playing {
                         angle,
                     );
                     self.turrets.push(turret);
-                }
+                },
+                _ => {}
             }
 
             for turret in &mut self.turrets {

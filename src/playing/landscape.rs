@@ -17,11 +17,15 @@ const LANDSCAPE_MAX_DY: f32 = 128.0;
 const LANDSCAPE_STEP: f32 = 16.0;
 
 pub struct Landscape {
-    pub(crate) render_lines: Vec<TintedLine>,
+    render_lines: Vec<TintedLine>,
     collision_lines: CollisionLines,
     rng: ThreadRng,
-    pub(crate) want_turret: bool,
     flat: i32,
+}
+
+pub enum LandscapeAction {
+    None,
+    MakeTurret(Line),
 }
 
 impl Landscape {
@@ -42,15 +46,14 @@ impl Landscape {
             render_lines,
             collision_lines: CollisionLines::new(),
             rng: rand::thread_rng(),
-            want_turret: false,
             flat: 0,
         }
     }
 
-    pub fn update(&mut self, camera: &Camera) {
+    pub fn update(&mut self, camera: &Camera) -> LandscapeAction {
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
-        self.want_turret = false;
+        let mut want_turret = false;
         let b = self.render_lines[self.render_lines.len() - 1].line.b;
         if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 + camera.pos.x {
             let new_y = if self.flat == 0 && self.rng.gen_range(0, 100) >= 25 {
@@ -72,7 +75,7 @@ impl Landscape {
                 .push(TintedLine::new(b, next_point, Color::GREEN));
 
             // Randomly add a turret if the conditions are right.
-            self.want_turret = self.flat == 2 && self.rng.gen_range(0, 100) >= 50;
+            want_turret = self.flat == 2 && self.rng.gen_range(0, 100) >= 50;
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
@@ -86,6 +89,12 @@ impl Landscape {
             Transform::IDENTITY,
             self.render_lines.iter().map(|line| line.line),
         );
+
+        if want_turret {
+            LandscapeAction::MakeTurret(self.render_lines[self.render_lines.len() - 1].line)
+        } else {
+            LandscapeAction::None
+        }
     }
 
     /// Draw the landscape to the given line renderer.
