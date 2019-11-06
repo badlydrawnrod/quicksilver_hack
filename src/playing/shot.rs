@@ -12,7 +12,7 @@ pub struct Shot {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    pub(crate) alive: bool, // TODO: make private
+    alive: bool,
 }
 
 killable!(Shot);

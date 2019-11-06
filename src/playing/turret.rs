@@ -15,7 +15,7 @@ pub struct Turret {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    pub(crate) alive: bool, // TODO: make private
+    alive: bool,
     rng: ThreadRng,
 }
 

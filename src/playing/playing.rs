@@ -23,6 +23,7 @@ use crate::game_state::{
     GameState,
 };
 use crate::line_renderer::{LineRenderer, RenderAssets};
+use crate::playing::killable::Kill;
 use crate::playing::landscape::LandscapeAction::MakeTurret;
 use crate::playing::turret::TurretAction::MakeShot;
 use crate::playing::world_pos::WorldPos;
@@ -164,19 +165,21 @@ impl Playing {
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
-                shot.alive = false;
+                shot.kill();
             }
 
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
                 if collides_with(&shot, &turret) {
-                    shot.alive = false;
-                    turret.alive = false;
+                    shot.kill();
+                    turret.kill();
                 }
             }
 
             // Check for the shot going out of bounds.
-            shot.alive = shot.alive && playfield.contains(shot.world_pos());
+            if shot.is_alive() && !playfield.contains(shot.world_pos()) {
+                shot.kill();
+            }
         }
     }
 
@@ -190,17 +193,19 @@ impl Playing {
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
-                shot.alive = false;
+                shot.kill();
             }
 
             // Collide the shot with the player.
             if collides_with(&shot, &self.player) {
-                shot.alive = false;
-                self.player.alive = false;
+                shot.kill();
+                self.player.kill();
             }
 
             // Check for the shot going out of bounds.
-            shot.alive = shot.alive && playfield.contains(shot.world_pos());
+            if shot.is_alive() && !playfield.contains(shot.world_pos()) {
+                shot.kill();
+            }
         }
     }
 
@@ -208,14 +213,14 @@ impl Playing {
     fn collide_player(&mut self) {
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
-            self.player.alive = false;
+            self.player.kill();
         }
 
         // Collide the player with the turrets.
         for turret in &mut self.turrets {
             if collides_with(&self.player, &turret) {
-                self.player.alive = false;
-                turret.alive = false;
+                self.player.kill();
+                turret.kill();
             }
         }
     }
@@ -231,7 +236,7 @@ impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
         let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
 
-        if self.player.alive {
+        if self.player.is_alive() {
             let forced_scroll = Vector::new(4, 0);
 
             self.player.control(forced_scroll, dx, dy, d_theta);

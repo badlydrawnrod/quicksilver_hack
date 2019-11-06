@@ -1,5 +1,6 @@
 pub trait Kill {
     fn kill(&mut self);
+    fn is_alive(&self) -> bool;
     fn is_dead(&self) -> bool;
 }
 
@@ -8,6 +9,10 @@ macro_rules! killable {
         impl crate::playing::killable::Kill for $name {
             fn kill(&mut self) {
                 self.alive = false;
+            }
+
+            fn is_alive(&self) -> bool {
+                self.alive
             }
 
             fn is_dead(&self) -> bool {
