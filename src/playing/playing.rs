@@ -24,6 +24,7 @@ use crate::game_state::{
 };
 use crate::line_renderer::{LineRenderer, RenderAssets};
 use crate::playing::landscape::LandscapeAction::MakeTurret;
+use crate::playing::turret::TurretAction::MakeShot;
 use crate::playing::world_pos::WorldPos;
 
 pub struct Playing {
@@ -262,16 +263,18 @@ impl GameState for Playing {
             }
 
             for turret in &mut self.turrets {
-                turret.control(&self.camera);
-                if turret.is_firing {
-                    let shot = Shot::new(
-                        self.render_assets.shot(),
-                        self.collision_assets.shot(),
-                        turret.world_pos() + Vector::new(0, -8),
-                        Vector::ZERO,
-                        turret.angle + 180.0,
-                    );
-                    self.turret_shots.push(shot);
+                match turret.control(&self.camera) {
+                    MakeShot(pos, angle) => {
+                        let shot = Shot::new(
+                            self.render_assets.shot(),
+                            self.collision_assets.shot(),
+                            pos + Vector::new(0, -8),
+                            Vector::ZERO,
+                            angle + 180.0,
+                        );
+                        self.turret_shots.push(shot);
+                    }
+                    _ => {}
                 }
             }
 

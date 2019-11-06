@@ -11,13 +11,17 @@ use rand::{prelude::*, Rng};
 
 pub struct Turret {
     pos: Vector,
-    pub(crate) angle: f32, // TODO: make private
+    angle: f32,
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    pub(crate) alive: bool,     // TODO: make private
-    pub(crate) is_firing: bool, // TODO: make private / remove
+    pub(crate) alive: bool, // TODO: make private
     rng: ThreadRng,
+}
+
+pub enum TurretAction {
+    None,
+    MakeShot(Vector, f32),
 }
 
 killable!(Turret);
@@ -42,21 +46,25 @@ impl Turret {
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
             alive: true,
-            is_firing: false,
             rng: rand::thread_rng(),
         }
     }
 
-    pub(crate) fn control(&mut self, camera: &Camera) {
+    pub(crate) fn control(&mut self, camera: &Camera) -> TurretAction {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.collision_lines.clear();
         self.collision_lines
             .add_model(self.collision_model.clone(), transform);
 
-        self.is_firing = self.rng.gen_range(0, 1000) < 10;
-
         if self.pos.x < camera.pos.x - 16.0 {
             self.kill();
+        }
+
+        let is_firing = self.rng.gen_range(0, 1000) < 10;
+        if is_firing {
+            TurretAction::MakeShot(self.world_pos(), self.angle)
+        } else {
+            TurretAction::None
         }
     }
 
