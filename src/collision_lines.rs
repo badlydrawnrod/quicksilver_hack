@@ -19,6 +19,7 @@ pub struct CollisionAssets {
     shot: CollisionModel,
     turret: CollisionModel,
     player: CollisionModel,
+    rocket: CollisionModel,
 }
 
 impl CollisionAssets {
@@ -46,10 +47,18 @@ impl CollisionAssets {
             Line::new((0, -16), (-16, 16)),
         ];
 
+        let rocket_lines = vec![
+            Line::new((-12, 16), (0, -32)),
+            Line::new((0, -32), (12, 16)),
+            Line::new((12, 16), (0, 0)),
+            Line::new((0, 0), (-12, 16)),
+        ];
+
         CollisionAssets {
             shot: CollisionModel::new(shot_lines),
             turret: CollisionModel::new(turret_lines),
             player: CollisionModel::new(player_lines),
+            rocket: CollisionModel::new(rocket_lines),
         }
     }
 
@@ -63,6 +72,10 @@ impl CollisionAssets {
 
     pub fn player(&self) -> CollisionModel {
         self.player.clone()
+    }
+
+    pub fn rocket(&self) -> CollisionModel {
+        self.rocket.clone()
     }
 }
 

@@ -26,6 +26,7 @@ pub struct Landscape {
 pub enum LandscapeAction {
     None,
     MakeTurret(Line),
+    MakeRocket(Line),
 }
 
 impl Landscape {
@@ -53,7 +54,7 @@ impl Landscape {
     pub fn update(&mut self, camera: &Camera) -> LandscapeAction {
         // We need to add a new line to our landscape if the rightmost point of the rightmost line
         // is about to become visible.
-        let mut want_turret = false;
+        let mut action = LandscapeAction::None;
         let b = self.render_lines[self.render_lines.len() - 1].line.b;
         if b.x < LANDSCAPE_STEP + VIRTUAL_WIDTH as f32 + camera.pos.x {
             let new_y = if self.flat == 0 && self.rng.gen_range(0, 100) >= 25 {
@@ -74,8 +75,18 @@ impl Landscape {
             self.render_lines
                 .push(TintedLine::new(b, next_point, Color::GREEN));
 
-            // Randomly add a turret if the conditions are right.
-            want_turret = self.flat == 2 && self.rng.gen_range(0, 100) >= 50;
+            // Randomly add a turret or rocket if the conditions are right.
+            if self.flat == 2 {
+                action = match self.rng.gen_range(0, 100) {
+                    0..=24 => LandscapeAction::MakeRocket(
+                        self.render_lines[self.render_lines.len() - 1].line,
+                    ),
+                    25..=50 => LandscapeAction::MakeTurret(
+                        self.render_lines[self.render_lines.len() - 1].line,
+                    ),
+                    _ => LandscapeAction::None,
+                }
+            }
         }
 
         // We need to remove the leftmost line from the landscape if it is no longer visible.
@@ -90,11 +101,7 @@ impl Landscape {
             self.render_lines.iter().map(|line| line.line),
         );
 
-        if want_turret {
-            LandscapeAction::MakeTurret(self.render_lines[self.render_lines.len() - 1].line)
-        } else {
-            LandscapeAction::None
-        }
+        action
     }
 
     /// Draw the landscape to the given line renderer.

@@ -4,6 +4,7 @@ mod killable;
 mod landscape;
 mod player;
 mod playing;
+mod rocket;
 mod shot;
 mod turret;
 mod world_pos;

@@ -47,6 +47,7 @@ pub struct RenderAssets {
     shot: RenderModel,
     turret: RenderModel,
     player: RenderModel,
+    rocket: RenderModel,
 }
 
 impl RenderAssets {
@@ -74,10 +75,18 @@ impl RenderAssets {
             TintedLine::new((0, -16), (-16, 16), Color::GREEN),
         ];
 
+        let rocket_lines = vec![
+            TintedLine::new((-12, 16), (0, -32), Color::GREEN),
+            TintedLine::new((0, -32), (12, 16), Color::GREEN),
+            TintedLine::new((12, 16), (0, 0), Color::GREEN),
+            TintedLine::new((0, 0), (-12, 16), Color::GREEN),
+        ];
+
         RenderAssets {
             shot: RenderModel::new(shot_lines),
             turret: RenderModel::new(turret_lines),
             player: RenderModel::new(player_lines),
+            rocket: RenderModel::new(rocket_lines),
         }
     }
 
@@ -91,6 +100,10 @@ impl RenderAssets {
 
     pub fn player(&self) -> RenderModel {
         self.player.clone()
+    }
+
+    pub fn rocket(&self) -> RenderModel {
+        self.rocket.clone()
     }
 }
 

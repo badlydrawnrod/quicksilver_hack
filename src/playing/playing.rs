@@ -2,6 +2,7 @@ use super::camera::Camera;
 use super::killable::Reap;
 use super::landscape::Landscape;
 use super::player::Player;
+use super::rocket::Rocket;
 use super::shot::Shot;
 use super::turret::Turret;
 
@@ -24,7 +25,7 @@ use crate::game_state::{
 };
 use crate::line_renderer::{LineRenderer, RenderAssets};
 use crate::playing::killable::Kill;
-use crate::playing::landscape::LandscapeAction::MakeTurret;
+use crate::playing::landscape::LandscapeAction::{MakeRocket, MakeTurret};
 use crate::playing::turret::TurretAction::MakeShot;
 use crate::playing::world_pos::WorldPos;
 
@@ -34,6 +35,7 @@ pub struct Playing {
     player: Player,
     landscape: Landscape,
     shots: Vec<Shot>,
+    rockets: Vec<Rocket>,
     turrets: Vec<Turret>,
     turret_shots: Vec<Shot>,
     gilrs: Gilrs,
@@ -66,6 +68,7 @@ impl Playing {
             ),
             landscape: Landscape::new(),
             shots: Vec::new(),
+            rockets: Vec::new(),
             turrets: Vec::new(),
             turret_shots: Vec::new(),
             gilrs: Gilrs::new()?,
@@ -168,6 +171,13 @@ impl Playing {
                 shot.kill();
             }
 
+            // Collide the shot with the rockets.
+            for rocket in &mut self.rockets {
+                if collides_with(&shot, &rocket) {
+                    shot.kill();
+                    rocket.kill();
+                }
+            }
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
                 if collides_with(&shot, &turret) {
@@ -216,6 +226,14 @@ impl Playing {
             self.player.kill();
         }
 
+        // Collide the player with the rockets.
+        for rocket in &mut self.rockets {
+            if collides_with(&self.player, &rocket) {
+                self.player.kill();
+                rocket.kill();
+            }
+        }
+
         // Collide the player with the turrets.
         for turret in &mut self.turrets {
             if collides_with(&self.player, &turret) {
@@ -237,20 +255,20 @@ impl GameState for Playing {
         let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
 
         if self.player.is_alive() {
-            let forced_scroll = Vector::new(4, 0);
+            let forward_velocity = Vector::new(4, 0);
 
-            self.player.control(forced_scroll, dx, dy, d_theta);
+            self.player.control(forward_velocity, dx, dy, d_theta);
             if fire {
                 let shot = Shot::new(
                     self.render_assets.shot(),
                     self.collision_assets.shot(),
                     self.player.world_pos(),
-                    forced_scroll,
+                    forward_velocity,
                     self.player.angle(),
                 );
                 self.shots.push(shot);
             }
-            self.camera.pos = self.camera.pos.translate(forced_scroll);
+            self.camera.pos = self.camera.pos.translate(forward_velocity);
 
             match self.landscape.update(&self.camera) {
                 MakeTurret(line) => {
@@ -264,7 +282,27 @@ impl GameState for Playing {
                     );
                     self.turrets.push(turret);
                 }
+                MakeRocket(line) => {
+                    let angle = (line.a - line.b).angle();
+                    let midpoint = line.center();
+                    let rocket = Rocket::new(
+                        self.render_assets.rocket(),
+                        self.collision_assets.rocket(),
+                        midpoint + Vector::new(0, -16),
+                        angle + 180.0,
+                    );
+                    self.rockets.push(rocket);
+                }
                 _ => {}
+            }
+
+            let playfield = Rectangle::new(
+                self.camera.pos + Vector::new(-16.0, -16.0),
+                (VIRTUAL_WIDTH as f32 + 64.0, VIRTUAL_HEIGHT as f32 + 32.0),
+            );
+
+            for rocket in &mut self.rockets {
+                rocket.control(&playfield);
             }
 
             for turret in &mut self.turrets {
@@ -294,6 +332,7 @@ impl GameState for Playing {
             self.collide_player();
             self.collide_shots();
             self.collide_turret_shots();
+            self.rockets.reap();
             self.shots.reap();
             self.turrets.reap();
             self.turret_shots.reap();
@@ -308,6 +347,9 @@ impl GameState for Playing {
         window.set_blend_mode(BlendMode::Additive)?;
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
+        for rocket in &self.rockets {
+            rocket.draw(&mut self.line_renderer);
+        }
         for turret in &self.turrets {
             turret.draw(&mut self.line_renderer);
         }
