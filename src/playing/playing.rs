@@ -16,16 +16,18 @@ use quicksilver::{
     Result,
 };
 
-use crate::collision_lines::{collides_with, CollisionAssets};
+use crate::collision_lines::collides_with;
 use crate::constants::*;
 use crate::game_state::{
     Action,
     Action::{Continue, Quit},
     GameState,
 };
-use crate::line_renderer::{LineRenderer, RenderAssets};
+use crate::line_renderer::LineRenderer;
+use crate::playing::collision_assets::CollisionAssets;
 use crate::playing::killable::Kill;
 use crate::playing::landscape::LandscapeAction::{MakeRocket, MakeTurret};
+use crate::playing::render_assets::RenderAssets;
 use crate::playing::turret::TurretAction::MakeShot;
 use crate::playing::world_pos::WorldPos;
 
