@@ -1,11 +1,10 @@
-use super::camera::Camera;
 use super::killable::Kill;
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
 use super::world_pos::WorldPos;
 
-use quicksilver::geom::{Transform, Vector};
+use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
 
 use rand::{prelude::*, Rng};
 
@@ -53,14 +52,16 @@ impl Turret {
         }
     }
 
-    pub(crate) fn control(&mut self, camera: &Camera) -> TurretAction {
+    pub(crate) fn control(&mut self, playfield: &Rectangle) -> TurretAction {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.collision_lines.clear();
         self.collision_lines
             .add_model(self.collision_model.clone(), transform);
 
-        if self.pos.x < camera.pos.x - 16.0 {
+        // Check for the turret going out of bounds.
+        if self.is_alive() && !playfield.contains(self.world_pos()) {
             self.kill();
+            return TurretAction::None;
         }
 
         let is_firing = self.rng.gen_range(0, 1000) < 10;

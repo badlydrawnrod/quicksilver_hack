@@ -1,9 +1,10 @@
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
+use crate::playing::killable::Kill;
 
 use super::world_pos::WorldPos;
 
-use quicksilver::geom::{Transform, Vector};
+use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
 
 pub struct Shot {
     pos: Vector,
@@ -47,12 +48,17 @@ impl Shot {
         }
     }
 
-    pub fn control(&mut self) {
+    pub fn control(&mut self, playfield: &Rectangle) {
         self.pos += self.velocity;
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
         self.collision_lines.clear();
         self.collision_lines
             .add_model(self.collision_model.clone(), transform);
+
+        // Check for the rocket going out of bounds.
+        if self.is_alive() && !playfield.contains(self.world_pos()) {
+            self.kill();
+        }
     }
 
     /// Draw the shot to the given line renderer.

@@ -160,11 +160,6 @@ impl Playing {
 
     /// Collide the player's shots and check for them going out of bounds.
     fn collide_shots(&mut self) {
-        let playfield = Rectangle::new(
-            self.camera.pos + Vector::new(-16.0, -16.0),
-            (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
-        );
-
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
@@ -185,21 +180,11 @@ impl Playing {
                     turret.kill();
                 }
             }
-
-            // Check for the shot going out of bounds.
-            if shot.is_alive() && !playfield.contains(shot.world_pos()) {
-                shot.kill();
-            }
         }
     }
 
     /// Collide the turret shots and check for them going out of bounds.
     fn collide_turret_shots(&mut self) {
-        let playfield = Rectangle::new(
-            self.camera.pos + Vector::new(-16.0, -16.0),
-            (VIRTUAL_WIDTH as f32 + 32.0, VIRTUAL_HEIGHT as f32 + 32.0),
-        );
-
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
@@ -210,11 +195,6 @@ impl Playing {
             if collides_with(&shot, &self.player) {
                 shot.kill();
                 self.player.kill();
-            }
-
-            // Check for the shot going out of bounds.
-            if shot.is_alive() && !playfield.contains(shot.world_pos()) {
-                shot.kill();
             }
         }
     }
@@ -306,7 +286,7 @@ impl GameState for Playing {
             }
 
             for turret in &mut self.turrets {
-                match turret.control(&self.camera) {
+                match turret.control(&playfield) {
                     MakeShot(pos, angle) => {
                         let shot = Shot::new(
                             self.render_assets.shot(),
@@ -322,11 +302,11 @@ impl GameState for Playing {
             }
 
             for shot in &mut self.shots {
-                shot.control();
+                shot.control(&playfield);
             }
 
             for shot in &mut self.turret_shots {
-                shot.control();
+                shot.control(&playfield);
             }
 
             self.collide_player();

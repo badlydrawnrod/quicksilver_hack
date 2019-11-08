@@ -1,6 +1,7 @@
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
+use super::killable::Kill;
 use super::world_pos::WorldPos;
 
 use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
@@ -62,7 +63,9 @@ impl Rocket {
             .add_model(self.collision_model.clone(), transform);
 
         // Check for the rocket going out of bounds.
-        self.alive = self.alive && playfield.contains(self.world_pos());
+        if self.is_alive() && !playfield.contains(self.world_pos()) {
+            self.kill();
+        }
     }
 
     /// Draw the rocket to the given line renderer.
