@@ -1,11 +1,3 @@
-use super::camera::Camera;
-use super::killable::Reap;
-use super::landscape::Landscape;
-use super::player::Player;
-use super::rocket::Rocket;
-use super::shot::Shot;
-use super::turret::Turret;
-
 use gilrs::{Button, EventType, GamepadId, Gilrs};
 
 use quicksilver::{
@@ -16,20 +8,31 @@ use quicksilver::{
     Result,
 };
 
-use crate::collision_lines::collides_with;
-use crate::constants::*;
-use crate::game_state::{
-    Action,
-    Action::{Continue, Quit},
-    GameState,
+use crate::{
+    collision_lines::collides_with,
+    constants::*,
+    game_state::{
+        Action,
+        Action::{Continue, Quit},
+        GameState,
+    },
+    line_renderer::LineRenderer,
+    playing::{
+        camera::Camera,
+        collision_assets::CollisionAssets,
+        killable::{Kill, Reap},
+        landscape::{
+            Landscape,
+            LandscapeAction::{MakeRocket, MakeTurret},
+        },
+        player::Player,
+        render_assets::RenderAssets,
+        rocket::Rocket,
+        shot::Shot,
+        turret::{Turret, TurretAction::MakeShot},
+        world_pos::WorldPos,
+    },
 };
-use crate::line_renderer::LineRenderer;
-use crate::playing::collision_assets::CollisionAssets;
-use crate::playing::killable::Kill;
-use crate::playing::landscape::LandscapeAction::{MakeRocket, MakeTurret};
-use crate::playing::render_assets::RenderAssets;
-use crate::playing::turret::TurretAction::MakeShot;
-use crate::playing::world_pos::WorldPos;
 
 pub struct Playing {
     camera: Camera,
