@@ -4,6 +4,7 @@ use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
 use super::world_pos::WorldPos;
+use crate::playing::health::Health;
 
 pub struct Player {
     pos: Vector,
@@ -11,10 +12,8 @@ pub struct Player {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    alive: bool,
+    health: Health,
 }
-
-killable!(Player);
 
 impl WorldPos for Player {
     fn world_pos(&self) -> Vector {
@@ -22,6 +21,18 @@ impl WorldPos for Player {
     }
     fn angle(&self) -> f32 {
         self.angle
+    }
+}
+
+impl AsRef<Health> for Player {
+    fn as_ref(&self) -> &Health {
+        &self.health
+    }
+}
+
+impl AsMut<Health> for Player {
+    fn as_mut(&mut self) -> &mut Health {
+        &mut self.health
     }
 }
 
@@ -38,12 +49,12 @@ impl Player {
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
-            alive: true,
+            health: Health::new(),
         }
     }
 
     pub(crate) fn control(&mut self, forward_velocity: Vector, dx: f32, dy: f32, rotate_by: f32) {
-        if !self.alive {
+        if self.health.is_dead() {
             return;
         }
 
@@ -70,7 +81,7 @@ impl Player {
 
     /// Draw the player's ship to the given line renderer.
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
-        if self.alive {
+        if self.health.is_alive() {
             let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
             line_renderer.add_model(self.render_model.clone(), transform);
         }

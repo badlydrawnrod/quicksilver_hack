@@ -1,6 +1,6 @@
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
-use crate::playing::killable::Kill;
+use crate::playing::health::Health;
 
 use super::world_pos::WorldPos;
 
@@ -13,10 +13,8 @@ pub struct Shot {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    alive: bool,
+    health: Health,
 }
-
-killable!(Shot);
 
 impl WorldPos for Shot {
     fn world_pos(&self) -> Vector {
@@ -24,6 +22,18 @@ impl WorldPos for Shot {
     }
     fn angle(&self) -> f32 {
         self.angle
+    }
+}
+
+impl AsRef<Health> for Shot {
+    fn as_ref(&self) -> &Health {
+        &self.health
+    }
+}
+
+impl AsMut<Health> for Shot {
+    fn as_mut(&mut self) -> &mut Health {
+        &mut self.health
     }
 }
 
@@ -44,7 +54,7 @@ impl Shot {
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
-            alive: true,
+            health: Health::new(),
         }
     }
 
@@ -56,8 +66,8 @@ impl Shot {
             .add_model(self.collision_model.clone(), transform);
 
         // Check for the rocket going out of bounds.
-        if self.is_alive() && !playfield.contains(self.world_pos()) {
-            self.kill();
+        if self.health.is_alive() && !playfield.contains(self.world_pos()) {
+            self.health.kill();
         }
     }
 

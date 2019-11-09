@@ -1,4 +1,3 @@
-use super::killable::Kill;
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
@@ -6,6 +5,7 @@ use super::world_pos::WorldPos;
 
 use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
 
+use crate::playing::health::Health;
 use rand::{prelude::*, Rng};
 
 pub struct Turret {
@@ -14,7 +14,7 @@ pub struct Turret {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    alive: bool,
+    health: Health,
     rng: ThreadRng,
 }
 
@@ -23,14 +23,24 @@ pub enum TurretAction {
     MakeShot(Vector, f32),
 }
 
-killable!(Turret);
-
 impl WorldPos for Turret {
     fn world_pos(&self) -> Vector {
         self.pos
     }
     fn angle(&self) -> f32 {
         self.angle
+    }
+}
+
+impl AsRef<Health> for Turret {
+    fn as_ref(&self) -> &Health {
+        &self.health
+    }
+}
+
+impl AsMut<Health> for Turret {
+    fn as_mut(&mut self) -> &mut Health {
+        &mut self.health
     }
 }
 
@@ -47,7 +57,7 @@ impl Turret {
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
-            alive: true,
+            health: Health::new(),
             rng: rand::thread_rng(),
         }
     }
@@ -59,8 +69,8 @@ impl Turret {
             .add_model(self.collision_model.clone(), transform);
 
         // Check for the turret going out of bounds.
-        if self.is_alive() && !playfield.contains(self.world_pos()) {
-            self.kill();
+        if self.health.is_alive() && !playfield.contains(self.world_pos()) {
+            self.health.kill();
             return TurretAction::None;
         }
 

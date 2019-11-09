@@ -8,6 +8,7 @@ use quicksilver::{
     Result,
 };
 
+use crate::playing::health::Health;
 use crate::{
     collision_lines::collides_with,
     constants::*,
@@ -20,7 +21,7 @@ use crate::{
     playing::{
         camera::Camera,
         collision_assets::CollisionAssets,
-        killable::{Kill, Reap},
+        health::reap,
         landscape::{
             Landscape,
             LandscapeAction::{MakeRocket, MakeTurret},
@@ -168,21 +169,21 @@ impl Playing {
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
-                shot.kill();
+                shot.as_mut().kill();
             }
 
             // Collide the shot with the rockets.
             for rocket in &mut self.rockets {
                 if collides_with(&shot, &rocket) {
-                    shot.kill();
-                    rocket.kill();
+                    shot.as_mut().kill();
+                    rocket.as_mut().kill();
                 }
             }
             // Collide the shot with the turrets.
             for turret in &mut self.turrets {
                 if collides_with(&shot, &turret) {
-                    shot.kill();
-                    turret.kill();
+                    shot.as_mut().kill();
+                    turret.as_mut().kill();
                 }
             }
         }
@@ -193,13 +194,13 @@ impl Playing {
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
-                shot.kill();
+                shot.as_mut().kill();
             }
 
             // Collide the shot with the player.
             if collides_with(&shot, &self.player) {
-                shot.kill();
-                self.player.kill();
+                shot.as_mut().kill();
+                self.player.as_mut().kill();
             }
         }
     }
@@ -208,22 +209,22 @@ impl Playing {
     fn collide_player(&mut self) {
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
-            self.player.kill();
+            self.player.as_mut().kill();
         }
 
         // Collide the player with the rockets.
         for rocket in &mut self.rockets {
             if collides_with(&self.player, &rocket) {
-                self.player.kill();
-                rocket.kill();
+                self.player.as_mut().kill();
+                rocket.as_mut().kill();
             }
         }
 
         // Collide the player with the turrets.
         for turret in &mut self.turrets {
             if collides_with(&self.player, &turret) {
-                self.player.kill();
-                turret.kill();
+                self.player.as_mut().kill();
+                turret.as_mut().kill();
             }
         }
     }
@@ -239,7 +240,8 @@ impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
         let (quit, fire, dx, dy, d_theta) = self.poll_inputs(window);
 
-        if self.player.is_alive() {
+        let health: &Health = self.player.as_ref();
+        if health.is_alive() {
             let forward_velocity = Vector::new(4, 0);
 
             self.player.control(forward_velocity, dx, dy, d_theta);
@@ -317,10 +319,10 @@ impl GameState for Playing {
             self.collide_player();
             self.collide_shots();
             self.collide_turret_shots();
-            self.rockets.reap();
-            self.shots.reap();
-            self.turrets.reap();
-            self.turret_shots.reap();
+            reap(&mut self.rockets);
+            reap(&mut self.shots);
+            reap(&mut self.turrets);
+            reap(&mut self.turret_shots);
         }
 
         let result = if quit { Quit } else { Continue };

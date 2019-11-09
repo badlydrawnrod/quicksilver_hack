@@ -1,9 +1,9 @@
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
-use super::killable::Kill;
 use super::world_pos::WorldPos;
 
+use crate::playing::health::Health;
 use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
 use rand::rngs::ThreadRng;
 use rand::Rng;
@@ -16,11 +16,9 @@ pub struct Rocket {
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
-    alive: bool,
+    health: Health,
     rng: ThreadRng,
 }
-
-killable!(Rocket);
 
 impl WorldPos for Rocket {
     fn world_pos(&self) -> Vector {
@@ -28,6 +26,17 @@ impl WorldPos for Rocket {
     }
     fn angle(&self) -> f32 {
         self.angle
+    }
+}
+
+impl AsRef<Health> for Rocket {
+    fn as_ref(&self) -> &Health {
+        &self.health
+    }
+}
+impl AsMut<Health> for Rocket {
+    fn as_mut(&mut self) -> &mut Health {
+        &mut self.health
     }
 }
 
@@ -46,7 +55,7 @@ impl Rocket {
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
-            alive: true,
+            health: Health::new(),
             rng: rand::thread_rng(),
         }
     }
@@ -63,8 +72,8 @@ impl Rocket {
             .add_model(self.collision_model.clone(), transform);
 
         // Check for the rocket going out of bounds.
-        if self.is_alive() && !playfield.contains(self.world_pos()) {
-            self.kill();
+        if self.health.is_alive() && !playfield.contains(self.world_pos()) {
+            self.health.kill();
         }
     }
 

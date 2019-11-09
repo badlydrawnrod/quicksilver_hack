@@ -1,7 +1,7 @@
 mod camera;
 mod collision_assets;
 #[macro_use]
-mod killable;
+mod health;
 mod landscape;
 mod player;
 mod playing;
