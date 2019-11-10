@@ -34,6 +34,8 @@ use crate::{
         world_pos::WorldPos,
     },
 };
+use crate::collision_lines::{collide_single_multi, collide_multi, collide_multi_single, collide_multi_with_closure};
+use std::borrow::BorrowMut;
 
 pub struct Playing {
     camera: Camera,
@@ -164,32 +166,29 @@ impl Playing {
         (quit, fire, dx, dy, rotate_by)
     }
 
-    /// Collide the player's shots and check for them going out of bounds.
+    /// Collide the player's shots.
     fn collide_shots(&mut self) {
+        collide_multi_single(&self.shots, &self.landscape);
+
+        collide_multi_with_closure(&mut self.shots, &mut self.rockets, |shot, rocket| {
+            shot.as_mut().kill();
+            rocket.as_mut().kill();
+        });
+
+        collide_multi_with_closure(&mut self.shots, &mut self.turrets, |shot, turret| {
+            shot.as_mut().kill();
+            turret.as_mut().kill();
+        });
+
         for shot in &mut self.shots {
             // Collide the shot with the landscape.
             if collides_with(&shot, &self.landscape) {
                 shot.as_mut().kill();
             }
-
-            // Collide the shot with the rockets.
-            for rocket in &mut self.rockets {
-                if collides_with(&shot, &rocket) {
-                    shot.as_mut().kill();
-                    rocket.as_mut().kill();
-                }
-            }
-            // Collide the shot with the turrets.
-            for turret in &mut self.turrets {
-                if collides_with(&shot, &turret) {
-                    shot.as_mut().kill();
-                    turret.as_mut().kill();
-                }
-            }
         }
     }
 
-    /// Collide the turret shots and check for them going out of bounds.
+    /// Collide the turrets' shots.
     fn collide_turret_shots(&mut self) {
         for shot in &mut self.turret_shots {
             // Collide the shot with the landscape.

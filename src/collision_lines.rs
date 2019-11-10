@@ -57,3 +57,54 @@ pub fn collides_with(a: impl AsRef<CollisionLines>, b: impl AsRef<CollisionLines
     }
     false
 }
+
+pub fn collide_single_multi<T, U>(x: &T, ys: &[U])
+    where
+        T: AsRef<CollisionLines>,
+        U: AsRef<CollisionLines>
+{
+    for y in ys.iter() {
+        if collides_with(&x, &y) {
+        }
+    }
+}
+
+pub fn collide_multi_single<T, U>(xs: &[T], y: &U)
+    where
+        T: AsRef<CollisionLines>,
+        U: AsRef<CollisionLines>
+{
+    for x in xs.iter() {
+        if collides_with(&x, &y) {
+        }
+    }
+}
+
+pub fn collide_multi<T, U>(xs: &[T], ys: &[U])
+where
+    T: AsRef<CollisionLines>,
+    U: AsRef<CollisionLines>
+{
+    for x in xs.iter() {
+        for y in ys.iter() {
+            if collides_with(&x, &y) {
+
+            }
+        }
+    }
+}
+
+pub fn collide_multi_with_closure<T, U, F>(xs: &mut[T], ys: &mut[U], f: F)
+    where
+        T: AsRef<CollisionLines>,
+        U: AsRef<CollisionLines>,
+        F: Fn(&mut T, &mut U) -> (),
+{
+    for x in xs.iter_mut() {
+        for y in ys.iter_mut() {
+            if collides_with(&x, &y) {
+                f(x, y);
+            }
+        }
+    }
+}
