@@ -8,6 +8,7 @@ use quicksilver::{
     Result,
 };
 
+use crate::collision_lines::{collide_many_many, collide_many_one};
 use crate::playing::health::Health;
 use crate::{
     collision_lines::collides_with,
@@ -34,8 +35,6 @@ use crate::{
         world_pos::WorldPos,
     },
 };
-use crate::collision_lines::{collide_single_multi, collide_multi, collide_multi_single, collide_multi_with_closure};
-use std::borrow::BorrowMut;
 
 pub struct Playing {
     camera: Camera,
@@ -166,44 +165,6 @@ impl Playing {
         (quit, fire, dx, dy, rotate_by)
     }
 
-    /// Collide the player's shots.
-    fn collide_shots(&mut self) {
-        collide_multi_single(&self.shots, &self.landscape);
-
-        collide_multi_with_closure(&mut self.shots, &mut self.rockets, |shot, rocket| {
-            shot.as_mut().kill();
-            rocket.as_mut().kill();
-        });
-
-        collide_multi_with_closure(&mut self.shots, &mut self.turrets, |shot, turret| {
-            shot.as_mut().kill();
-            turret.as_mut().kill();
-        });
-
-        for shot in &mut self.shots {
-            // Collide the shot with the landscape.
-            if collides_with(&shot, &self.landscape) {
-                shot.as_mut().kill();
-            }
-        }
-    }
-
-    /// Collide the turrets' shots.
-    fn collide_turret_shots(&mut self) {
-        for shot in &mut self.turret_shots {
-            // Collide the shot with the landscape.
-            if collides_with(&shot, &self.landscape) {
-                shot.as_mut().kill();
-            }
-
-            // Collide the shot with the player.
-            if collides_with(&shot, &self.player) {
-                shot.as_mut().kill();
-                self.player.as_mut().kill();
-            }
-        }
-    }
-
     /// Collide the player.
     fn collide_player(&mut self) {
         // Collide the player with the landscape.
@@ -212,20 +173,60 @@ impl Playing {
         }
 
         // Collide the player with the rockets.
-        for rocket in &mut self.rockets {
-            if collides_with(&self.player, &rocket) {
-                self.player.as_mut().kill();
-                rocket.as_mut().kill();
-            }
-        }
+        collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
+            rocket.as_mut().kill();
+            player.as_mut().kill();
+        });
 
         // Collide the player with the turrets.
-        for turret in &mut self.turrets {
-            if collides_with(&self.player, &turret) {
-                self.player.as_mut().kill();
-                turret.as_mut().kill();
-            }
-        }
+        collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
+            turret.as_mut().kill();
+            player.as_mut().kill();
+        });
+    }
+
+    /// Collide the player's shots.
+    fn collide_shots(&mut self) {
+        // Collide the player's shots with the landscape.
+        collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
+            shot.as_mut().kill();
+        });
+
+        // Collide the player's shots with the rockets.
+        collide_many_many(&mut self.shots, &mut self.rockets, |shot, rocket| {
+            shot.as_mut().kill();
+            rocket.as_mut().kill();
+        });
+
+        // Collide the player's shots with the turrets.
+        collide_many_many(&mut self.shots, &mut self.turrets, |shot, turret| {
+            shot.as_mut().kill();
+            turret.as_mut().kill();
+        });
+    }
+
+    /// Collide the turrets' shots.
+    fn collide_turret_shots(&mut self) {
+        // Collide the turrets' shots with the landscape.
+        collide_many_one(
+            &mut self.turret_shots,
+            &mut self.landscape,
+            |shot, _landscape| {
+                shot.as_mut().kill();
+            },
+        );
+
+        // Collide the turrets' shots with the player.
+        collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
+            shot.as_mut().kill();
+            player.as_mut().kill();
+        });
+    }
+
+    fn check_collisions(&mut self) {
+        self.collide_player();
+        self.collide_shots();
+        self.collide_turret_shots();
     }
 }
 
@@ -315,9 +316,7 @@ impl GameState for Playing {
                 shot.control(&playfield);
             }
 
-            self.collide_player();
-            self.collide_shots();
-            self.collide_turret_shots();
+            self.check_collisions();
             reap(&mut self.rockets);
             reap(&mut self.shots);
             reap(&mut self.turrets);
