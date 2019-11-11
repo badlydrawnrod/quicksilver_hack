@@ -111,7 +111,7 @@ impl Playing {
         let particles = &mut self.particles;
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
             shot.as_mut().kill();
-            particles.add(shot.world_pos());
+            particles.add(10, shot.world_pos(), shot.angle());
         });
 
         // Collide the player's shots with the rockets.
