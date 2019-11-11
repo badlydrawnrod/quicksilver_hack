@@ -51,7 +51,7 @@ impl Rocket {
             pos,
             angle,
             velocity: Vector::ZERO,
-            flight_velocity: Transform::rotate(angle) * Vector::new(0.0, -8.0),
+            flight_velocity: Transform::rotate(angle) * Vector::new(0.0, -4.0),
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
