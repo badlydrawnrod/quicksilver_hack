@@ -33,6 +33,7 @@ use crate::{
         world_pos::WorldPos,
     },
 };
+use std::collections::HashMap;
 
 pub struct Playing {
     camera: Camera,
@@ -49,7 +50,7 @@ pub struct Playing {
 }
 
 impl Playing {
-    pub(crate) fn new(line_images: Vec<Image>) -> Result<Self> {
+    pub(crate) fn new(images: HashMap<String, Image>) -> Result<Self> {
         let mut landscape = Vec::new();
         let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
@@ -63,7 +64,7 @@ impl Playing {
             camera: Camera {
                 pos: Vector::new(0, 0),
             },
-            line_renderer: LineRenderer::new(line_images[0].clone()),
+            line_renderer: LineRenderer::new(images["line"].clone()),
             player: Player::new(
                 render_assets.player(),
                 collision_assets.player(),
