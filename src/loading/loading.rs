@@ -1,5 +1,5 @@
-use crate::playing::Playing;
 use crate::{
+    playing::Playing,
     Action,
     Action::{Continue, Transition},
     GameState,
@@ -13,43 +13,41 @@ use quicksilver::{
 use std::collections::HashMap;
 
 pub struct Loading {
-    line: Asset<Image>,
-    particle: Asset<Image>,
-    lines: HashMap<String, Image>,
+    loading: HashMap<String, Asset<Image>>,
+    loaded: HashMap<String, Image>,
 }
 
 impl Loading {
     pub fn new() -> Result<Self> {
+        let mut loading: HashMap<String, Asset<Image>> = HashMap::new();
+        loading.insert("line".to_string(), Asset::new(Image::load("line.png")));
+        loading.insert(
+            "particle".to_string(),
+            Asset::new(Image::load("particle.png")),
+        );
         Ok(Self {
-            line: Asset::new(Image::load("line.png")),
-            particle: Asset::new(Image::load("particle.png")),
-            lines: HashMap::new(),
+            loading: loading,
+            loaded: HashMap::new(),
         })
     }
 }
 
 impl GameState for Loading {
     fn update(&mut self, _window: &mut Window) -> Result<Action> {
-        let lines = &mut self.lines;
-
-        if !lines.contains_key("line") {
-            self.line.execute(|image| {
-                lines.insert("line".to_string(), image.to_owned());
-                Ok(())
-            })?;
+        let loaded = &mut self.loaded;
+        for (name, image) in &mut self.loading {
+            if !loaded.contains_key(name) {
+                image.execute(|image| {
+                    loaded.insert(name.to_string(), image.to_owned());
+                    Ok(())
+                })?;
+            }
         }
 
-        if !lines.contains_key("particle") {
-            self.particle.execute(|image| {
-                lines.insert("particle".to_string(), image.to_owned());
-                Ok(())
-            })?;
-        }
-
-        let result = if self.lines.len() < 2 {
+        let result = if self.loaded.len() < self.loading.len() {
             Continue
         } else {
-            Transition(Box::new(Playing::new(self.lines.clone())?))
+            Transition(Box::new(Playing::new(self.loaded.clone())?))
         };
         result.into()
     }
