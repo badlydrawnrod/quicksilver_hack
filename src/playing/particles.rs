@@ -54,18 +54,18 @@ impl Particles {
 
     pub fn add(&mut self, number: usize, position: Vector, angle: f32) {
         let mut number = number;
-        while number > 0 {
-            for particle in &mut self.particles {
-                if particle.alive <= 0.0 {
-                    let angle = angle + self.rng.gen_range(-30.0, 30.0);
-                    let speed = 2.0 + self.rng.gen_range(0.0, 4.0);
-                    particle.position = position;
-                    particle.velocity = Transform::rotate(angle) * Vector::new(0, -speed);
-                    particle.alive = 60.0; // TODO: no magic.
+        for particle in &mut self.particles {
+            if particle.alive <= 0.0 {
+                let angle = angle + self.rng.gen_range(-30.0, 30.0);
+                let speed = 2.0 + self.rng.gen_range(0.0, 4.0);
+                particle.position = position;
+                particle.velocity = Transform::rotate(angle) * Vector::new(0, -speed);
+                particle.alive = 60.0; // TODO: no magic.
+                number -= 1;
+                if number == 0 {
                     break;
                 }
             }
-            number -= 1;
         }
     }
 }
