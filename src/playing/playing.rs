@@ -111,19 +111,21 @@ impl Playing {
         let particles = &mut self.particles;
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
             shot.as_mut().kill();
-            particles.add(10, shot.world_pos(), shot.angle());
+            particles.add(4, shot.world_pos(), shot.angle() - 180.0);
         });
 
         // Collide the player's shots with the rockets.
         collide_many_many(&mut self.shots, &mut self.rockets, |shot, rocket| {
             shot.as_mut().kill();
             rocket.as_mut().kill();
+            particles.add(48, rocket.world_pos(), shot.angle());
         });
 
         // Collide the player's shots with the turrets.
         collide_many_many(&mut self.shots, &mut self.turrets, |shot, turret| {
             shot.as_mut().kill();
             turret.as_mut().kill();
+            particles.add(64, turret.world_pos(), 0.0);
         });
     }
 
@@ -268,6 +270,7 @@ impl GameState for Playing {
             shot.draw(&mut self.line_renderer);
         }
         self.line_renderer.render(window);
+        window.reset_blend_mode()?;
         self.particles.draw(window);
 
         Ok(())

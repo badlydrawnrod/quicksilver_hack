@@ -74,11 +74,11 @@ where
 }
 
 /// Collide many against many, invoking the given closure when a collision is detected.
-pub fn collide_many_many<T, U, F>(xs: &mut [T], ys: &mut [U], on_collision: F)
+pub fn collide_many_many<T, U, F>(xs: &mut [T], ys: &mut [U], mut on_collision: F)
 where
     T: AsRef<CollisionLines>,
     U: AsRef<CollisionLines>,
-    F: Fn(&mut T, &mut U) -> (),
+    F: FnMut(&mut T, &mut U) -> (),
 {
     for x in xs.iter_mut() {
         for y in ys.iter_mut() {

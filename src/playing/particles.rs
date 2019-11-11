@@ -39,7 +39,6 @@ impl Particles {
     }
 
     pub fn draw(&mut self, window: &mut Window) {
-        window.reset_blend_mode();
         for particle in &mut self.particles {
             if particle.alive > 0.0 {
                 let colour = Color::GREEN.with_alpha(particle.alive / 30.0); // TODO: no magic.
@@ -61,7 +60,7 @@ impl Particles {
                     let angle = angle + self.rng.gen_range(-30.0, 30.0);
                     let speed = 2.0 + self.rng.gen_range(0.0, 4.0);
                     particle.position = position;
-                    particle.velocity = Transform::rotate(angle) * Vector::new(0, speed);
+                    particle.velocity = Transform::rotate(angle) * Vector::new(0, -speed);
                     particle.alive = 60.0; // TODO: no magic.
                     break;
                 }
