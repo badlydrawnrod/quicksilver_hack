@@ -3,6 +3,7 @@ mod collision_assets;
 mod health;
 mod input;
 mod landscape;
+mod particles;
 mod player;
 mod playing;
 mod render_assets;

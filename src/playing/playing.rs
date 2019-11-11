@@ -25,6 +25,7 @@ use crate::{
             Landscape,
             LandscapeAction::{MakeRocket, MakeTurret},
         },
+        particles::Particles,
         player::Player,
         render_assets::RenderAssets,
         rocket::Rocket,
@@ -47,6 +48,7 @@ pub struct Playing {
     input: Input,
     render_assets: RenderAssets,
     collision_assets: CollisionAssets,
+    particles: Particles,
 }
 
 impl Playing {
@@ -79,6 +81,7 @@ impl Playing {
             input: Input::new()?,
             render_assets: render_assets,
             collision_assets: collision_assets,
+            particles: Particles::new(1024, images["particle"].clone()),
         })
     }
 
@@ -105,8 +108,10 @@ impl Playing {
     /// Collide the player's shots.
     fn collide_shots(&mut self) {
         // Collide the player's shots with the landscape.
+        let particles = &mut self.particles;
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
             shot.as_mut().kill();
+            particles.add(shot.world_pos());
         });
 
         // Collide the player's shots with the rockets.
@@ -263,6 +268,7 @@ impl GameState for Playing {
             shot.draw(&mut self.line_renderer);
         }
         self.line_renderer.render(window);
+        self.particles.draw(window);
 
         Ok(())
     }

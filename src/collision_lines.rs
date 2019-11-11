@@ -60,11 +60,11 @@ pub fn collides_with(a: impl AsRef<CollisionLines>, b: impl AsRef<CollisionLines
 }
 
 /// Collide many against one, invoking the given closure when a collision is detected.
-pub fn collide_many_one<T, U, F>(xs: &mut [T], y: &mut U, on_collision: F)
+pub fn collide_many_one<T, U, F>(xs: &mut [T], y: &mut U, mut on_collision: F)
 where
     T: AsRef<CollisionLines>,
     U: AsRef<CollisionLines>,
-    F: Fn(&mut T, &mut U) -> (),
+    F: FnMut(&mut T, &mut U) -> (),
 {
     for x in xs.iter_mut() {
         if collides_with(&x, &y) {
