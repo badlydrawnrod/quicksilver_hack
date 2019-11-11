@@ -34,10 +34,14 @@ impl RenderAssets {
         ];
 
         let rocket_lines = vec![
-            TintedLine::new((-12, 16), (0, -32), Color::GREEN),
-            TintedLine::new((0, -32), (12, 16), Color::GREEN),
-            TintedLine::new((12, 16), (0, 0), Color::GREEN),
-            TintedLine::new((0, 0), (-12, 16), Color::GREEN),
+            TintedLine::new((-6, 4), (-12, 16), Color::GREEN),
+            TintedLine::new((-12, 16), (-12, 0), Color::GREEN),
+            TintedLine::new((-12, 0), (0, 8), Color::GREEN),
+            TintedLine::new((0, 8), (12, 0), Color::GREEN),
+            TintedLine::new((12, 0), (12, 16), Color::GREEN),
+            TintedLine::new((12, 16), (6, 4), Color::GREEN),
+            TintedLine::new((-12, 0), (0, -28), Color::GREEN),
+            TintedLine::new((0, -28), (12, 0), Color::GREEN),
         ];
 
         RenderAssets {

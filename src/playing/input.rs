@@ -1,4 +1,4 @@
-use gilrs::{Button, EventType, Gilrs, GamepadId};
+use gilrs::{Button, EventType, GamepadId, Gilrs};
 use quicksilver::{
     input::{ButtonState, Key},
     lifecycle::Window,

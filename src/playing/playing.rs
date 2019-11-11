@@ -1,9 +1,6 @@
-use gilrs::{Button, EventType, GamepadId, Gilrs};
-
 use quicksilver::{
     geom::{Line, Rectangle, Shape, Vector},
     graphics::{BlendMode, Image, View},
-    input::{ButtonState, Key},
     lifecycle::Window,
     Result,
 };

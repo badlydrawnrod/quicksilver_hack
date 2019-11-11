@@ -34,10 +34,14 @@ impl CollisionAssets {
         ];
 
         let rocket_lines = vec![
-            Line::new((-12, 16), (0, -32)),
-            Line::new((0, -32), (12, 16)),
-            Line::new((12, 16), (0, 0)),
-            Line::new((0, 0), (-12, 16)),
+            Line::new((-6, 4), (-12, 16)),
+            Line::new((-12, 16), (-12, 0)),
+            Line::new((-12, 0), (0, 8)),
+            Line::new((0, 8), (12, 0)),
+            Line::new((12, 0), (12, 16)),
+            Line::new((12, 16), (6, 4)),
+            Line::new((-12, 0), (0, -28)),
+            Line::new((0, -28), (12, 0)),
         ];
 
         CollisionAssets {
