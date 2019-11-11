@@ -1,7 +1,7 @@
 mod camera;
 mod collision_assets;
-#[macro_use]
 mod health;
+mod input;
 mod landscape;
 mod player;
 mod playing;
