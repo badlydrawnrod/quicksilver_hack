@@ -93,21 +93,21 @@ impl Playing {
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
             self.player.as_mut().kill();
-            particles.add(128, player_pos, -90.0);
+            particles.add(128, player_pos, -90.0, 180.0);
         }
 
         // Collide the player with the rockets.
         collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
             rocket.as_mut().kill();
             player.as_mut().kill();
-            particles.add(128, player_pos, -90.0);
+            particles.add(128, player_pos, -90.0, 180.0);
         });
 
         // Collide the player with the turrets.
         collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
             turret.as_mut().kill();
             player.as_mut().kill();
-            particles.add(128, player_pos, -90.0);
+            particles.add(128, player_pos, -90.0, 180.0);
         });
     }
 
@@ -118,26 +118,28 @@ impl Playing {
         // Collide the player's shots with the landscape.
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
             shot.as_mut().kill();
-            particles.add(4, shot.world_pos(), shot.angle() - 180.0);
+            particles.add(4, shot.world_pos(), shot.angle() - 180.0, 15.0);
         });
 
         // Collide the player's shots with the rockets.
         collide_many_many(&mut self.shots, &mut self.rockets, |shot, rocket| {
             shot.as_mut().kill();
             rocket.as_mut().kill();
-            particles.add(48, rocket.world_pos(), shot.angle());
+            particles.add(48, rocket.world_pos(), shot.angle(), 30.0);
         });
 
         // Collide the player's shots with the turrets.
         collide_many_many(&mut self.shots, &mut self.turrets, |shot, turret| {
             shot.as_mut().kill();
             turret.as_mut().kill();
-            particles.add(64, turret.world_pos(), 0.0);
+            particles.add(64, turret.world_pos(), 0.0, 45.0);
         });
     }
 
     /// Collide the turrets' shots.
     fn collide_turret_shots(&mut self) {
+        let particles = &mut self.particles;
+
         // Collide the turrets' shots with the landscape.
         collide_many_one(
             &mut self.turret_shots,
@@ -151,7 +153,7 @@ impl Playing {
         collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
             shot.as_mut().kill();
             player.as_mut().kill();
-            particles.add(128, player.world_pos(), -90.0);
+            particles.add(128, player.world_pos(), -90.0, 180.0);
         });
     }
 

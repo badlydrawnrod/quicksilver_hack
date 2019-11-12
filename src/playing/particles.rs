@@ -8,7 +8,6 @@ const PARTICLE_LIFE: f32 = 60.0;
 const HALF_LIFE: f32 = PARTICLE_LIFE / 2.0;
 const MIN_SPEED: f32 = 2.0;
 const MAX_SPEED: f32 = 6.0;
-const SPREAD_ANGLE: f32 = 30.0;
 
 struct Particle {
     alive: f32,
@@ -64,10 +63,10 @@ impl Particles {
         }
     }
 
-    pub fn add(&mut self, number: usize, position: Vector, angle: f32) {
+    pub fn add(&mut self, number: usize, position: Vector, angle: f32, spread: f32) {
         for _ in 0..number {
             let mut particle = &mut self.particles[self.next_particle];
-            let angle = angle + self.rng.gen_range(-SPREAD_ANGLE, SPREAD_ANGLE);
+            let angle = angle + self.rng.gen_range(-spread, spread);
             let speed = self.rng.gen_range(MIN_SPEED, MAX_SPEED);
             particle.position = position;
             particle.velocity = Transform::rotate(angle) * Vector::new(0, -speed);
