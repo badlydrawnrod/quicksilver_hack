@@ -87,28 +87,35 @@ impl Playing {
 
     /// Collide the player.
     fn collide_player(&mut self) {
+        let particles = &mut self.particles;
+        let player_pos = self.player.world_pos();
+
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
             self.player.as_mut().kill();
+            particles.add(128, player_pos, -90.0);
         }
 
         // Collide the player with the rockets.
         collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
             rocket.as_mut().kill();
             player.as_mut().kill();
+            particles.add(128, player_pos, -90.0);
         });
 
         // Collide the player with the turrets.
         collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
             turret.as_mut().kill();
             player.as_mut().kill();
+            particles.add(128, player_pos, -90.0);
         });
     }
 
     /// Collide the player's shots.
     fn collide_shots(&mut self) {
-        // Collide the player's shots with the landscape.
         let particles = &mut self.particles;
+
+        // Collide the player's shots with the landscape.
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
             shot.as_mut().kill();
             particles.add(4, shot.world_pos(), shot.angle() - 180.0);
@@ -144,6 +151,7 @@ impl Playing {
         collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
             shot.as_mut().kill();
             player.as_mut().kill();
+            particles.add(128, player.world_pos(), -90.0);
         });
     }
 
