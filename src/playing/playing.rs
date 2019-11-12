@@ -100,6 +100,7 @@ impl Playing {
         collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
             rocket.as_mut().kill();
             player.as_mut().kill();
+            particles.add(48, rocket.world_pos(), 0.0, 180.0);
             particles.add(128, player_pos, -90.0, 180.0);
         });
 
@@ -107,6 +108,7 @@ impl Playing {
         collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
             turret.as_mut().kill();
             player.as_mut().kill();
+            particles.add(64, turret.world_pos(), 0.0, 45.0);
             particles.add(128, player_pos, -90.0, 180.0);
         });
     }
