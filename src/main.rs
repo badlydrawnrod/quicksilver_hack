@@ -1,6 +1,7 @@
 // Play around with Quicksilver.
 mod collision_lines;
 mod constants;
+mod font;
 mod game_state;
 mod line_renderer;
 mod loading;
