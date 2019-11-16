@@ -8,13 +8,13 @@ use quicksilver::{
 use crate::{
     collision_lines::{collide_many_many, collide_many_one, collides_with},
     constants::*,
-    font::{RenderFont, VectorFont},
+    font::{text_to_lines, VectorFont},
     game_state::{
         Action,
         Action::{Continue, Quit},
         GameState,
     },
-    line_renderer::LineRenderer,
+    line_renderer::{LineRenderer, RenderModel},
     playing::{
         camera::Camera,
         collision_assets::CollisionAssets,
@@ -33,6 +33,8 @@ use crate::{
         world_pos::WorldPos,
     },
 };
+
+use quicksilver::geom::Transform;
 
 use std::collections::HashMap;
 
@@ -54,8 +56,14 @@ pub struct Playing {
     particles: Particles,
     font: VectorFont,
     score: i32,
+    score_model: RenderModel,
+    redraw_score: bool,
     lives: i32,
+    lives_model: RenderModel,
+    redraw_lives: bool,
     high_score: i32,
+    high_score_model: RenderModel,
+    redraw_high_score: bool,
 }
 
 impl Playing {
@@ -91,8 +99,14 @@ impl Playing {
             particles: Particles::new(1024, images["particle"].clone()),
             font: VectorFont::new(),
             score: 0,
+            score_model: RenderModel::new(Vec::new()),
+            redraw_score: true,
             lives: 3,
+            lives_model: RenderModel::new(Vec::new()),
+            redraw_lives: true,
             high_score: 5000,
+            high_score_model: RenderModel::new(Vec::new()),
+            redraw_high_score: true,
         })
     }
 
@@ -127,6 +141,9 @@ impl Playing {
     /// Collide the player's shots.
     fn collide_shots(&mut self) {
         let particles = &mut self.particles;
+        let old_score = self.score;
+        let old_high_score = self.high_score;
+
         let score = &mut self.score;
 
         // Collide the player's shots with the landscape.
@@ -152,6 +169,9 @@ impl Playing {
         });
 
         self.high_score = self.high_score.max(self.score);
+
+        self.redraw_score = self.score != old_score;
+        self.redraw_high_score = self.high_score != old_high_score;
     }
 
     /// Collide the turrets' shots.
@@ -182,26 +202,45 @@ impl Playing {
     }
 
     fn draw_status(&mut self) {
-        // TODO: only change the text when the score changes.
-        // TODO: better still, output it all to a bunch of lines, or a mesh, and only change that
-        //  when the score changes. Ditto high score and lives.
-        let score = format!("SCORE:{:06}", self.score);
-        self.line_renderer.add_text(
-            self.camera.pos + Vector::new(4.0, 28.0),
-            &self.font,
-            score.as_str(),
+        if self.redraw_score {
+            self.redraw_score = false;
+            let score = format!("SCORE:{:06}", self.score);
+            let lines = text_to_lines(Vector::new(4.0, 28.0), &self.font, score.as_str());
+            self.score_model = RenderModel::new(lines);
+        }
+        self.line_renderer.add_model(
+            self.score_model.clone(),
+            Transform::translate(self.camera.pos),
         );
-        let high_score = format!("HIGH:{:06}", self.high_score);
-        self.line_renderer.add_text(
-            self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
-            &self.font,
-            high_score.as_str(),
+
+        if self.redraw_high_score {
+            self.redraw_high_score = false;
+            let high_score = format!("HIGH:{:06}", self.high_score);
+            let lines = text_to_lines(
+                Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
+                &self.font,
+                high_score.as_str(),
+            );
+            self.high_score_model = RenderModel::new(lines);
+        }
+        self.line_renderer.add_model(
+            self.high_score_model.clone(),
+            Transform::translate(self.camera.pos),
         );
-        let lives = format!("LIVES:{}", self.lives);
-        self.line_renderer.add_text(
-            self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
-            &self.font,
-            lives.as_str(),
+
+        if self.redraw_lives {
+            self.redraw_lives = false;
+            let lives = format!("LIVES:{}", self.lives);
+            let lines = text_to_lines(
+                self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
+                &self.font,
+                lives.as_str(),
+            );
+            self.lives_model = RenderModel::new(lines);
+        }
+        self.line_renderer.add_model(
+            self.lives_model.clone(),
+            Transform::translate(self.camera.pos),
         );
     }
 }

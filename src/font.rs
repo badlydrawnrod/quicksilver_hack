@@ -8,7 +8,7 @@ pub enum DrawCommand {
     FontLast,
 }
 
-use crate::line_renderer::{LineRenderer, TintedLine};
+use crate::line_renderer::TintedLine;
 use quicksilver::geom::Vector;
 use quicksilver::graphics::Color;
 use DrawCommand::{FontLast, FontUp, P};
@@ -565,7 +565,7 @@ impl VectorFont {
     }
 }
 
-fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLine> {
+pub fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLine> {
     let mut pos = pos;
     let mut lines: Vec<TintedLine> = Vec::new();
     for c in text.chars() {
@@ -590,15 +590,4 @@ fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLine> 
         pos.x += 10.0 * 2.0;
     }
     lines
-}
-
-pub trait RenderFont {
-    fn add_text(&mut self, pos: Vector, font: &VectorFont, text: &str);
-}
-
-impl RenderFont for LineRenderer {
-    fn add_text(&mut self, pos: Vector, font: &VectorFont, text: &str) {
-        let lines = text_to_lines(pos, font, text);
-        self.add_lines(lines.into_iter());
-    }
 }
