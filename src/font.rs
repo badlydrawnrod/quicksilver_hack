@@ -565,35 +565,40 @@ impl VectorFont {
     }
 }
 
+fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLine> {
+    let mut pos = pos;
+    let mut lines: Vec<TintedLine> = Vec::new();
+    for c in text.chars() {
+        if let Some(strokes) = font.0.get(&c) {
+            let mut last_coord: Option<Vector> = None;
+            for stroke in strokes.0.iter() {
+                match stroke {
+                    P(x, y) => {
+                        let new_coord = pos + Vector::new(*x as f32 * 2.0, -*y as f32 * 2.0);
+                        if let Some(coord) = last_coord {
+                            lines.push(TintedLine::new(coord, new_coord, Color::GREEN));
+                        }
+                        last_coord = Some(new_coord);
+                    }
+                    FontUp => {
+                        last_coord = None;
+                    }
+                    FontLast => break,
+                }
+            }
+        }
+        pos.x += 10.0 * 2.0;
+    }
+    lines
+}
+
 pub trait RenderFont {
     fn add_text(&mut self, pos: Vector, font: &VectorFont, text: &str);
 }
 
 impl RenderFont for LineRenderer {
     fn add_text(&mut self, pos: Vector, font: &VectorFont, text: &str) {
-        let mut pos = pos;
-        let mut lines: Vec<TintedLine> = Vec::new();
-        for c in text.chars() {
-            if let Some(strokes) = font.0.get(&c) {
-                let mut last_coord: Option<Vector> = None;
-                for stroke in strokes.0.iter() {
-                    match stroke {
-                        P(x, y) => {
-                            let new_coord = pos + Vector::new(*x as f32 * 2.0, -*y as f32 * 2.0);
-                            if let Some(coord) = last_coord {
-                                lines.push(TintedLine::new(coord, new_coord, Color::GREEN));
-                            }
-                            last_coord = Some(new_coord);
-                        }
-                        FontUp => {
-                            last_coord = None;
-                        }
-                        FontLast => break,
-                    }
-                }
-            }
-            pos.x += 10.0 * 2.0;
-        }
+        let lines = text_to_lines(pos, font, text);
         self.add_lines(lines.into_iter());
     }
 }
