@@ -36,6 +36,9 @@ use crate::{
 
 use std::collections::HashMap;
 
+const ROCKET_SCORE: i32 = 200;
+const TURRET_SCORE: i32 = 150;
+
 pub struct Playing {
     camera: Camera,
     line_renderer: LineRenderer,
@@ -50,6 +53,9 @@ pub struct Playing {
     collision_assets: CollisionAssets,
     particles: Particles,
     font: VectorFont,
+    score: i32,
+    lives: i32,
+    high_score: i32,
 }
 
 impl Playing {
@@ -84,6 +90,9 @@ impl Playing {
             collision_assets: collision_assets,
             particles: Particles::new(1024, images["particle"].clone()),
             font: VectorFont::new(),
+            score: 0,
+            lives: 3,
+            high_score: 5000,
         })
     }
 
@@ -118,6 +127,7 @@ impl Playing {
     /// Collide the player's shots.
     fn collide_shots(&mut self) {
         let particles = &mut self.particles;
+        let score = &mut self.score;
 
         // Collide the player's shots with the landscape.
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
@@ -130,6 +140,7 @@ impl Playing {
             shot.as_mut().kill();
             rocket.as_mut().kill();
             particles.add(48, rocket.world_pos(), shot.angle(), 30.0);
+            *score += ROCKET_SCORE;
         });
 
         // Collide the player's shots with the turrets.
@@ -137,7 +148,10 @@ impl Playing {
             shot.as_mut().kill();
             turret.as_mut().kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
+            *score += TURRET_SCORE;
         });
+
+        self.high_score = self.high_score.max(self.score);
     }
 
     /// Collide the turrets' shots.
@@ -168,32 +182,27 @@ impl Playing {
     }
 
     fn draw_status(&mut self) {
+        // TODO: only change the text when the score changes.
+        // TODO: better still, output it all to a bunch of lines, or a mesh, and only change that
+        //  when the score changes. Ditto high score and lives.
+        let score = format!("SCORE:{:06}", self.score);
         self.line_renderer.add_text(
             self.camera.pos + Vector::new(4.0, 28.0),
             &self.font,
-            "SCORE:010000",
+            score.as_str(),
         );
+        let high_score = format!("HIGH:{:06}", self.high_score);
         self.line_renderer.add_text(
             self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
             &self.font,
-            "HI SCORE:123450",
+            high_score.as_str(),
         );
+        let lives = format!("LIVES:{}", self.lives);
         self.line_renderer.add_text(
             self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
             &self.font,
-            "LIVES:3",
+            lives.as_str(),
         );
-        if self.camera.pos.x % 256.0 < 128.0 {
-            self.line_renderer.add_text(
-                self.camera.pos
-                    + Vector::new(
-                    VIRTUAL_WIDTH as f32 / 2.0 - 80.0,
-                    VIRTUAL_HEIGHT as f32 / 2.0,
-                ),
-                &self.font,
-                "INSERT COIN",
-            );
-        }
     }
 }
 
