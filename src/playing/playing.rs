@@ -35,6 +35,7 @@ use crate::{
     },
 };
 use std::collections::HashMap;
+use crate::font::{VectorFont, RenderFont};
 
 pub struct Playing {
     camera: Camera,
@@ -281,9 +282,20 @@ impl GameState for Playing {
         for shot in &self.turret_shots {
             shot.draw(&mut self.line_renderer);
         }
+
+        // TODO: remove this hack.
+        let font: VectorFont = VectorFont::new();
+        self.line_renderer.add_text(self.camera.pos + Vector::new(4.0, 28.0), &font, "SCORE:010000");
+        self.line_renderer.add_text(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0), &font, "HI SCORE:123450");
+        self.line_renderer.add_text(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0), &font, "LIVES:3");
+        if self.camera.pos.x % 256.0 < 128.0 {
+            self.line_renderer.add_text(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 80.0, VIRTUAL_HEIGHT as f32 / 2.0), &font, "INSERT COIN");
+        }
+
         self.line_renderer.render(window);
         window.reset_blend_mode()?;
         self.particles.draw(window);
+
 
         Ok(())
     }
