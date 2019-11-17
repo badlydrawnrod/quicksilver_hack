@@ -66,7 +66,8 @@ fn main() {
     let fixed_update_interval_ms = 1000.0 / fixed_update_hz;
     let settings = Settings {
         scale: ImageScaleStrategy::Blur,
-        update_rate: fixed_update_interval_ms,
+//        update_rate: fixed_update_interval_ms,
+//        vsync: true,
         ..Settings::default()
     };
     run::<Game>(

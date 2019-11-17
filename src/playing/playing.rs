@@ -350,6 +350,23 @@ impl GameState for Playing {
             shot.draw(&mut self.line_renderer);
         }
         self.draw_status();
+
+        // Current FPS.
+        let fps = format!("FPS: {:2.2}", window.current_fps());
+        let fps_model = text_to_model(&self.font, fps.as_str());
+        self.line_renderer.add_model(
+            fps_model,
+            Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0)),
+        );
+
+        // Average FPS.
+        let fps = format!("FPS: {:2.2}", window.average_fps());
+        let fps_model = text_to_model(&self.font, fps.as_str());
+        self.line_renderer.add_model(
+            fps_model,
+            Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0)),
+        );
+
         self.line_renderer.render(window);
         window.reset_blend_mode()?;
         self.particles.draw(window);
