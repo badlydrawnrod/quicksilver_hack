@@ -1,17 +1,22 @@
 // Ported from: https://github.com/osresearch/vst/blob/master/teensyv/asteroids_font.c
 
+use DrawCommand::{FontLast, FontUp, P};
+
+use crate::line_renderer::{RenderModel, TintedLine};
+
+use quicksilver::geom::Vector;
+use quicksilver::graphics::Color;
+
 use std::collections::HashMap;
+
+const SCALE: f32 = 2.0;
+const HORIZONTAL_STEP: f32 = 10.0;
 
 pub enum DrawCommand {
     P(i8, i8),
     FontUp,
     FontLast,
 }
-
-use crate::line_renderer::TintedLine;
-use quicksilver::geom::Vector;
-use quicksilver::graphics::Color;
-use DrawCommand::{FontLast, FontUp, P};
 
 pub struct Glyph(pub Vec<DrawCommand>);
 
@@ -565,8 +570,8 @@ impl VectorFont {
     }
 }
 
-pub fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLine> {
-    let mut pos = pos;
+fn text_to_lines(font: &VectorFont, text: &str) -> Vec<TintedLine> {
+    let mut pos = Vector::ZERO;
     let mut lines: Vec<TintedLine> = Vec::new();
     for c in text.chars() {
         if let Some(strokes) = font.0.get(&c) {
@@ -574,7 +579,8 @@ pub fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLi
             for stroke in strokes.0.iter() {
                 match stroke {
                     P(x, y) => {
-                        let new_coord = pos + Vector::new(*x as f32 * 2.0, -*y as f32 * 2.0);
+                        let new_coord =
+                            pos + Vector::new(*x as f32 * SCALE, -*y as f32 * SCALE);
                         if let Some(coord) = last_coord {
                             lines.push(TintedLine::new(coord, new_coord, Color::GREEN));
                         }
@@ -587,7 +593,12 @@ pub fn text_to_lines(pos: Vector, font: &VectorFont, text: &str) -> Vec<TintedLi
                 }
             }
         }
-        pos.x += 10.0 * 2.0;
+        pos.x += HORIZONTAL_STEP * SCALE;
     }
     lines
+}
+
+pub fn text_to_model(font: &VectorFont, text: &str) -> RenderModel {
+    let lines = text_to_lines(font, text);
+    RenderModel::new(lines)
 }

@@ -1,14 +1,7 @@
-use quicksilver::{
-    geom::{Line, Rectangle, Shape, Vector},
-    graphics::{BlendMode, Image, View},
-    lifecycle::Window,
-    Result,
-};
-
 use crate::{
     collision_lines::{collide_many_many, collide_many_one, collides_with},
     constants::*,
-    font::{text_to_lines, VectorFont},
+    font::{text_to_model, VectorFont},
     game_state::{
         Action,
         Action::{Continue, Quit},
@@ -34,7 +27,12 @@ use crate::{
     },
 };
 
-use quicksilver::geom::Transform;
+use quicksilver::{
+    geom::{Line, Rectangle, Shape, Transform, Vector},
+    graphics::{BlendMode, Image, View},
+    lifecycle::Window,
+    Result,
+};
 
 use std::collections::HashMap;
 
@@ -201,46 +199,37 @@ impl Playing {
         self.collide_turret_shots();
     }
 
-    fn text_to_model(&self, pos: Vector, text: &str) -> RenderModel {
-        let lines = text_to_lines(pos, &self.font, text);
-        RenderModel::new(lines)
-    }
-
     fn draw_status(&mut self) {
         if self.redraw_score {
             self.redraw_score = false;
             let score = format!("SCORE:{:06}", self.score);
-            self.score_model = self.text_to_model(Vector::new(4.0, 28.0), score.as_str());
+            self.score_model = text_to_model(&self.font, score.as_str());
         }
         self.line_renderer.add_model(
             self.score_model.clone(),
-            Transform::translate(self.camera.pos),
+            Transform::translate(self.camera.pos + Vector::new(4.0, 28.0)),
         );
 
         if self.redraw_high_score {
             self.redraw_high_score = false;
             let high_score = format!("HIGH:{:06}", self.high_score);
-            self.high_score_model = self.text_to_model(
-                Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
-                high_score.as_str(),
-            );
+            self.high_score_model = text_to_model(&self.font, high_score.as_str());
         }
         self.line_renderer.add_model(
             self.high_score_model.clone(),
-            Transform::translate(self.camera.pos),
+            Transform::translate(
+                self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
+            ),
         );
 
         if self.redraw_lives {
             self.redraw_lives = false;
             let lives = format!("LIVES:{}", self.lives);
-            self.lives_model = self.text_to_model(
-                Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
-                lives.as_str(),
-            );
+            self.lives_model = text_to_model(&self.font, lives.as_str());
         }
         self.line_renderer.add_model(
             self.lives_model.clone(),
-            Transform::translate(self.camera.pos),
+            Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0)),
         );
     }
 }
