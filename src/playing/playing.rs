@@ -170,8 +170,8 @@ impl Playing {
 
         self.high_score = self.high_score.max(self.score);
 
-        self.redraw_score = self.score != old_score;
-        self.redraw_high_score = self.high_score != old_high_score;
+        self.redraw_score = self.redraw_score || (self.score != old_score);
+        self.redraw_high_score = self.redraw_high_score || (self.high_score != old_high_score);
     }
 
     /// Collide the turrets' shots.
@@ -201,12 +201,16 @@ impl Playing {
         self.collide_turret_shots();
     }
 
+    fn text_to_model(&self, pos: Vector, text: &str) -> RenderModel {
+        let lines = text_to_lines(pos, &self.font, text);
+        RenderModel::new(lines)
+    }
+
     fn draw_status(&mut self) {
         if self.redraw_score {
             self.redraw_score = false;
             let score = format!("SCORE:{:06}", self.score);
-            let lines = text_to_lines(Vector::new(4.0, 28.0), &self.font, score.as_str());
-            self.score_model = RenderModel::new(lines);
+            self.score_model = self.text_to_model(Vector::new(4.0, 28.0), score.as_str());
         }
         self.line_renderer.add_model(
             self.score_model.clone(),
@@ -216,12 +220,10 @@ impl Playing {
         if self.redraw_high_score {
             self.redraw_high_score = false;
             let high_score = format!("HIGH:{:06}", self.high_score);
-            let lines = text_to_lines(
+            self.high_score_model = self.text_to_model(
                 Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
-                &self.font,
                 high_score.as_str(),
             );
-            self.high_score_model = RenderModel::new(lines);
         }
         self.line_renderer.add_model(
             self.high_score_model.clone(),
@@ -231,12 +233,10 @@ impl Playing {
         if self.redraw_lives {
             self.redraw_lives = false;
             let lives = format!("LIVES:{}", self.lives);
-            let lines = text_to_lines(
-                self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
-                &self.font,
+            self.lives_model = self.text_to_model(
+                Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0),
                 lives.as_str(),
             );
-            self.lives_model = RenderModel::new(lines);
         }
         self.line_renderer.add_model(
             self.lives_model.clone(),
