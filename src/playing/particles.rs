@@ -1,13 +1,16 @@
+use crate::constants::FIXED_UPDATE_INTERVAL_MS;
+
 use quicksilver::geom::{Rectangle, Transform, Vector};
 use quicksilver::graphics::{Background::Blended, Color, Image};
 use quicksilver::lifecycle::Window;
+
 use rand::{prelude::*, Rng};
 
 const PARTICLE_SIZE: f32 = 16.0;
 const PARTICLE_LIFE: f32 = 60.0;
 const HALF_LIFE: f32 = PARTICLE_LIFE / 2.0;
-const MIN_SPEED: f32 = 2.0;
-const MAX_SPEED: f32 = 6.0;
+const MIN_SPEED: f32 = 120.0;
+const MAX_SPEED: f32 = 360.0;
 
 struct Particle {
     alive: f32,
@@ -46,11 +49,11 @@ impl Particles {
         }
     }
 
-    pub fn draw(&mut self, window: &mut Window) {
+    pub fn draw(&mut self, window: &mut Window, delta: f32) {
         for particle in &mut self.particles {
             if particle.alive > 0.0 {
                 let colour = Color::GREEN.with_alpha(particle.alive / HALF_LIFE);
-                particle.position += particle.velocity;
+                particle.position += particle.velocity * delta * 0.001;
                 window.draw(
                     &Rectangle::new(
                         particle.position - Vector::new(PARTICLE_SIZE / 2.0, PARTICLE_SIZE / 2.0),
@@ -58,7 +61,7 @@ impl Particles {
                     ),
                     Blended(&self.image, colour),
                 );
-                particle.alive -= 1.0;
+                particle.alive -= delta / FIXED_UPDATE_INTERVAL_MS as f32;
             }
         }
     }

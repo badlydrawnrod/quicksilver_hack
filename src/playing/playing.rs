@@ -70,8 +70,8 @@ pub struct Playing {
     high_score: i32,
     high_score_model: RenderModel,
     redraw_high_score: bool,
-    now: f64,
-    delta: f64,
+    last_draw_time: f64,
+    delta: f32,
 }
 
 impl Playing {
@@ -104,7 +104,7 @@ impl Playing {
             input: Input::new()?,
             render_assets: render_assets,
             collision_assets: collision_assets,
-            particles: Particles::new(1024, images["particle"].clone()),
+            particles: Particles::new(512, images["particle"].clone()),
             font: VectorFont::new(),
             score: 0,
             score_model: RenderModel::new(Vec::new()),
@@ -115,7 +115,7 @@ impl Playing {
             high_score: 5000,
             high_score_model: RenderModel::new(Vec::new()),
             redraw_high_score: true,
-            now: current_time(),
+            last_draw_time: current_time(),
             delta: 0.0,
         })
     }
@@ -376,9 +376,9 @@ impl GameState for Playing {
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         let now = current_time();
-        let delta = now - self.now;
+        let delta = (now - self.last_draw_time) as f32;
         self.delta = delta;
-        self.now = now;
+        self.last_draw_time = now;
 
         let health: &Health = self.player.as_ref();
         if health.is_alive() {
@@ -417,7 +417,7 @@ impl GameState for Playing {
         self.line_renderer.render(window);
 
         window.reset_blend_mode()?;
-        self.particles.draw(window);
+        self.particles.draw(window, delta);
 
         Ok(())
     }
