@@ -579,8 +579,7 @@ fn text_to_lines(font: &VectorFont, text: &str) -> Vec<TintedLine> {
             for stroke in strokes.0.iter() {
                 match stroke {
                     P(x, y) => {
-                        let new_coord =
-                            pos + Vector::new(*x as f32 * SCALE, -*y as f32 * SCALE);
+                        let new_coord = pos + Vector::new(*x as f32 * SCALE, -*y as f32 * SCALE);
                         if let Some(coord) = last_coord {
                             lines.push(TintedLine::new(coord, new_coord, Color::GREEN));
                         }

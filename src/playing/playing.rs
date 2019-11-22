@@ -34,7 +34,17 @@ use quicksilver::{
     Result,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::{
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
+#[cfg(target_arch = "wasm32")]
+use stdweb::web::Date;
+
 use std::collections::HashMap;
+
+const FORWARD_SPEED: f32 = 240.0;
 
 const ROCKET_SCORE: i32 = 200;
 const TURRET_SCORE: i32 = 150;
@@ -62,6 +72,8 @@ pub struct Playing {
     high_score: i32,
     high_score_model: RenderModel,
     redraw_high_score: bool,
+    now: f64,
+    delta: f64,
 }
 
 impl Playing {
@@ -105,6 +117,8 @@ impl Playing {
             high_score: 5000,
             high_score_model: RenderModel::new(Vec::new()),
             redraw_high_score: true,
+            now: current_time(),
+            delta: 0.0,
         })
     }
 
@@ -246,7 +260,7 @@ impl GameState for Playing {
 
         let health: &Health = self.player.as_ref();
         if health.is_alive() {
-            let forward_velocity = Vector::new(4, 0);
+            let forward_velocity = Vector::new(FORWARD_SPEED * FIXED_UPDATE_INTERVAL_S as f32, 0.0);
 
             self.player.control(forward_velocity, dx, dy, d_theta);
             if fire {
@@ -259,7 +273,8 @@ impl GameState for Playing {
                 );
                 self.shots.push(shot);
             }
-            self.camera.pos = self.camera.pos.translate(forward_velocity);
+
+            //            self.camera.pos = self.camera.pos.translate(forward_velocity);
 
             match self.landscape.update(&self.camera) {
                 MakeTurret(line) => {
@@ -332,7 +347,21 @@ impl GameState for Playing {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        rescale_viewport(window, self.camera.pos);
+        let now = current_time();
+        let delta = now - self.now;
+        self.delta = delta;
+        self.now = now;
+
+        let health: &Health = self.player.as_ref();
+        if health.is_alive() {
+            // Drive the camera forward in the scene.
+            let forward_velocity = Vector::new(FORWARD_SPEED * 0.001 * self.delta as f32, 0.0);
+            self.camera.pos = self.camera.pos.translate(forward_velocity);
+        }
+
+        let translate = self.camera.pos;
+        rescale_viewport(window, translate);
+
         window.set_blend_mode(BlendMode::Additive)?;
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
@@ -356,21 +385,55 @@ impl GameState for Playing {
         let fps_model = text_to_model(&self.font, fps.as_str());
         self.line_renderer.add_model(
             fps_model,
-            Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0)),
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0),
+            ),
         );
 
         // Average FPS.
-        let fps = format!("FPS: {:2.2}", window.average_fps());
+        let fps = format!("AVG: {:2.2}", window.average_fps());
         let fps_model = text_to_model(&self.font, fps.as_str());
         self.line_renderer.add_model(
             fps_model,
-            Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0)),
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0),
+            ),
+        );
+
+        // Delta time.
+        let t = format!("DEL: {:02.2}", self.delta);
+        let t_model = text_to_model(&self.font, t.as_str());
+        self.line_renderer.add_model(
+            t_model,
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 192.0),
+            ),
         );
 
         self.line_renderer.render(window);
+
         window.reset_blend_mode()?;
         self.particles.draw(window);
 
         Ok(())
     }
+}
+
+// "Borrowed" from Quicksilver as I want to know the time.
+
+#[cfg(not(target_arch = "wasm32"))]
+fn current_time() -> f64 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    since_the_epoch.as_secs() as f64 * 1000.0 + since_the_epoch.subsec_nanos() as f64 / 1e6
+}
+
+#[cfg(target_arch = "wasm32")]
+fn current_time() -> f64 {
+    Date::now()
 }

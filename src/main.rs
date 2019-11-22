@@ -62,12 +62,11 @@ impl State for Game {
 }
 
 fn main() {
-    let fixed_update_hz = 60.0;
-    let fixed_update_interval_ms = 1000.0 / fixed_update_hz;
     let settings = Settings {
         scale: ImageScaleStrategy::Blur,
-//        update_rate: fixed_update_interval_ms,
-//        vsync: true,
+        update_rate: FIXED_UPDATE_INTERVAL_MS,
+        vsync: VSYNC,
+        draw_rate: DRAW_INTERVAL_MS,
         ..Settings::default()
     };
     run::<Game>(
