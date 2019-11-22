@@ -35,10 +35,8 @@ use quicksilver::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::{
-    thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 #[cfg(target_arch = "wasm32")]
 use stdweb::web::Date;
 
@@ -412,7 +410,9 @@ impl GameState for Playing {
             shot.draw(&mut self.line_renderer);
         }
         self.draw_status();
-        //        self.draw_diags(window);
+        if DRAW_DIAGS {
+            self.draw_diags(window);
+        }
 
         self.line_renderer.render(window);
 
