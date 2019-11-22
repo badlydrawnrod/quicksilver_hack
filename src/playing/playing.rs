@@ -122,6 +122,11 @@ impl Playing {
 
     /// Collide the player.
     fn collide_player(&mut self) {
+        let health: &Health = self.player.as_ref();
+        if !health.is_alive() {
+            return;
+        }
+
         let particles = &mut self.particles;
         let player_pos = self.player.world_pos();
 
@@ -245,7 +250,7 @@ impl Playing {
         );
     }
 
-    fn draw_diags(&mut self, window: &mut Window) {
+    fn draw_diags(&mut self, window: &mut Window, alpha: f64) {
         // Current FPS.
         let fps = format!("FPS: {:2.2}", window.current_fps());
         let fps_model = text_to_model(&self.font, fps.as_str());
@@ -256,6 +261,7 @@ impl Playing {
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0),
             ),
         );
+
         // Average FPS.
         let fps = format!("AVG: {:2.2}", window.average_fps());
         let fps_model = text_to_model(&self.font, fps.as_str());
@@ -266,6 +272,7 @@ impl Playing {
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0),
             ),
         );
+
         // Delta time.
         let t = format!("DEL: {:02.2}", self.delta);
         let t_model = text_to_model(&self.font, t.as_str());
@@ -274,6 +281,17 @@ impl Playing {
             Transform::translate(
                 self.camera.pos
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 192.0),
+            ),
+        );
+
+        // Alpha.
+        let t = format!("ALP: {:1.3}", alpha);
+        let t_model = text_to_model(&self.font, t.as_str());
+        self.line_renderer.add_model(
+            t_model,
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 256.0),
             ),
         );
     }
@@ -329,52 +347,52 @@ impl GameState for Playing {
                 }
                 _ => {}
             }
-
-            let playfield = Rectangle::new(
-                self.camera.pos + Vector::new(-16.0, -16.0),
-                (VIRTUAL_WIDTH as f32 + 64.0, VIRTUAL_HEIGHT as f32 + 32.0),
-            );
-
-            for rocket in &mut self.rockets {
-                rocket.control(&playfield);
-            }
-
-            for turret in &mut self.turrets {
-                match turret.control(&playfield) {
-                    MakeShot(pos, angle) => {
-                        let shot = Shot::new(
-                            self.render_assets.shot(),
-                            self.collision_assets.shot(),
-                            pos + Vector::new(0, -8),
-                            Vector::ZERO,
-                            angle + 180.0,
-                        );
-                        self.turret_shots.push(shot);
-                    }
-                    _ => {}
-                }
-            }
-
-            for shot in &mut self.shots {
-                shot.control(&playfield);
-            }
-
-            for shot in &mut self.turret_shots {
-                shot.control(&playfield);
-            }
-
-            self.check_collisions();
-            reap(&mut self.rockets);
-            reap(&mut self.shots);
-            reap(&mut self.turrets);
-            reap(&mut self.turret_shots);
         }
+
+        let playfield = Rectangle::new(
+            self.camera.pos + Vector::new(-16.0, -16.0),
+            (VIRTUAL_WIDTH as f32 + 64.0, VIRTUAL_HEIGHT as f32 + 32.0),
+        );
+
+        for rocket in &mut self.rockets {
+            rocket.control(&playfield);
+        }
+
+        for turret in &mut self.turrets {
+            match turret.control(&playfield) {
+                MakeShot(pos, angle) => {
+                    let shot = Shot::new(
+                        self.render_assets.shot(),
+                        self.collision_assets.shot(),
+                        pos + Vector::new(0, -8),
+                        Vector::ZERO,
+                        angle + 180.0,
+                    );
+                    self.turret_shots.push(shot);
+                }
+                _ => {}
+            }
+        }
+
+        for shot in &mut self.shots {
+            shot.control(&playfield);
+        }
+
+        for shot in &mut self.turret_shots {
+            shot.control(&playfield);
+        }
+
+        self.check_collisions();
+        reap(&mut self.rockets);
+        reap(&mut self.shots);
+        reap(&mut self.turrets);
+        reap(&mut self.turret_shots);
 
         let result = if quit { Quit } else { Continue };
         result.into()
     }
 
-    fn draw(&mut self, window: &mut Window) -> Result<()> {
+    fn draw(&mut self, window: &mut Window, alpha: f64) -> Result<()> {
         let now = current_time();
         let delta = (now - self.last_draw_time) as f32;
         self.delta = delta;
@@ -397,21 +415,21 @@ impl GameState for Playing {
         self.line_renderer.clear();
         self.landscape.draw(&mut self.line_renderer);
         for rocket in &self.rockets {
-            rocket.draw(&mut self.line_renderer);
+            rocket.draw(&mut self.line_renderer, alpha);
         }
         for turret in &self.turrets {
             turret.draw(&mut self.line_renderer);
         }
-        self.player.draw(&mut self.line_renderer);
+        self.player.draw(&mut self.line_renderer, alpha);
         for shot in &self.shots {
-            shot.draw(&mut self.line_renderer);
+            shot.draw(&mut self.line_renderer, alpha);
         }
         for shot in &self.turret_shots {
-            shot.draw(&mut self.line_renderer);
+            shot.draw(&mut self.line_renderer, alpha);
         }
         self.draw_status();
         if DRAW_DIAGS {
-            self.draw_diags(window);
+            self.draw_diags(window, alpha);
         }
 
         self.line_renderer.render(window);

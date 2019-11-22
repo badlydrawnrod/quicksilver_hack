@@ -78,8 +78,9 @@ impl Rocket {
     }
 
     /// Draw the rocket to the given line renderer.
-    pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
-        let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
+    pub(crate) fn draw(&self, line_renderer: &mut LineRenderer, alpha: f64) {
+        let pos = self.pos + self.velocity * alpha as f32;
+        let transform = Transform::translate(pos) * Transform::rotate(self.angle);
         line_renderer.add_model(self.render_model.clone(), transform);
     }
 }

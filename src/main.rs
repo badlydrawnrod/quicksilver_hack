@@ -54,10 +54,10 @@ impl State for Game {
         Ok(())
     }
 
-    fn draw(&mut self, window: &mut Window) -> Result<()> {
+    fn draw(&mut self, window: &mut Window, alpha: f64) -> Result<()> {
         Game::rescale_viewport(window);
         window.clear(Color::BLACK)?;
-        self.game_state.draw(window)
+        self.game_state.draw(window, alpha)
     }
 }
 

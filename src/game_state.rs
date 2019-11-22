@@ -22,7 +22,7 @@ pub trait GameState {
         Action::Continue.into()
     }
 
-    fn draw(&mut self, _window: &mut Window) -> Result<()> {
+    fn draw(&mut self, _window: &mut Window, alpha: f64) -> Result<()> {
         Ok(())
     }
 }

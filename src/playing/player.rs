@@ -9,6 +9,7 @@ use crate::playing::health::Health;
 pub struct Player {
     pos: Vector,
     angle: f32,
+    velocity: Vector,
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
@@ -46,6 +47,7 @@ impl Player {
         Player {
             pos,
             angle,
+            velocity: Vector::ZERO,
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
@@ -63,9 +65,9 @@ impl Player {
         }
 
         // Apply movement due to input.
+        self.velocity = Vector::new(dx * 2.0, dy * 2.0);
         if dx != 0.0 || dy != 0.0 {
-            let movement = Vector::new(dx * 2.0, dy * 2.0);
-            self.pos += movement;
+            self.pos += self.velocity;
         }
 
         // Update the rotation.
@@ -81,9 +83,10 @@ impl Player {
     }
 
     /// Draw the player's ship to the given line renderer.
-    pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
+    pub(crate) fn draw(&self, line_renderer: &mut LineRenderer, alpha: f64) {
         if self.health.is_alive() {
-            let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
+            let pos = self.world_pos() + self.velocity * alpha as f32;
+            let transform = Transform::translate(pos) * Transform::rotate(self.angle);
             line_renderer.add_model(self.render_model.clone(), transform);
         }
     }

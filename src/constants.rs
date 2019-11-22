@@ -13,4 +13,4 @@ pub const DRAW_INTERVAL_MS: f64 = 1000.0 / MAX_DRAW_RATE_HZ;
 
 pub const VSYNC: bool = false;
 
-pub const DRAW_DIAGS: bool = false;
+pub const DRAW_DIAGS: bool = true;
