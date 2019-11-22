@@ -246,6 +246,39 @@ impl Playing {
             Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0)),
         );
     }
+
+    fn draw_diags(&mut self, window: &mut Window) {
+        // Current FPS.
+        let fps = format!("FPS: {:2.2}", window.current_fps());
+        let fps_model = text_to_model(&self.font, fps.as_str());
+        self.line_renderer.add_model(
+            fps_model,
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0),
+            ),
+        );
+        // Average FPS.
+        let fps = format!("AVG: {:2.2}", window.average_fps());
+        let fps_model = text_to_model(&self.font, fps.as_str());
+        self.line_renderer.add_model(
+            fps_model,
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0),
+            ),
+        );
+        // Delta time.
+        let t = format!("DEL: {:02.2}", self.delta);
+        let t_model = text_to_model(&self.font, t.as_str());
+        self.line_renderer.add_model(
+            t_model,
+            Transform::translate(
+                self.camera.pos
+                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 192.0),
+            ),
+        );
+    }
 }
 
 fn rescale_viewport(window: &mut Window, translate: Vector) {
@@ -261,8 +294,7 @@ impl GameState for Playing {
         let health: &Health = self.player.as_ref();
         if health.is_alive() {
             let forward_velocity = Vector::new(FORWARD_SPEED * FIXED_UPDATE_INTERVAL_S as f32, 0.0);
-
-            self.player.control(forward_velocity, dx, dy, d_theta);
+            self.player.control(dx, dy, d_theta);
             if fire {
                 let shot = Shot::new(
                     self.render_assets.shot(),
@@ -273,8 +305,6 @@ impl GameState for Playing {
                 );
                 self.shots.push(shot);
             }
-
-            //            self.camera.pos = self.camera.pos.translate(forward_velocity);
 
             match self.landscape.update(&self.camera) {
                 MakeTurret(line) => {
@@ -354,8 +384,11 @@ impl GameState for Playing {
 
         let health: &Health = self.player.as_ref();
         if health.is_alive() {
-            // Drive the camera forward in the scene.
+            // Drive the player and camera forward. The player is moved with the camera rather than
+            // at a fixed rate to prevent it from stuttering when the update rate and draw rate are
+            // not in sync.
             let forward_velocity = Vector::new(FORWARD_SPEED * 0.001 * self.delta as f32, 0.0);
+            self.player.advance(forward_velocity);
             self.camera.pos = self.camera.pos.translate(forward_velocity);
         }
 
@@ -379,39 +412,7 @@ impl GameState for Playing {
             shot.draw(&mut self.line_renderer);
         }
         self.draw_status();
-
-        // Current FPS.
-        let fps = format!("FPS: {:2.2}", window.current_fps());
-        let fps_model = text_to_model(&self.font, fps.as_str());
-        self.line_renderer.add_model(
-            fps_model,
-            Transform::translate(
-                self.camera.pos
-                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0),
-            ),
-        );
-
-        // Average FPS.
-        let fps = format!("AVG: {:2.2}", window.average_fps());
-        let fps_model = text_to_model(&self.font, fps.as_str());
-        self.line_renderer.add_model(
-            fps_model,
-            Transform::translate(
-                self.camera.pos
-                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0),
-            ),
-        );
-
-        // Delta time.
-        let t = format!("DEL: {:02.2}", self.delta);
-        let t_model = text_to_model(&self.font, t.as_str());
-        self.line_renderer.add_model(
-            t_model,
-            Transform::translate(
-                self.camera.pos
-                    + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 192.0),
-            ),
-        );
+        //        self.draw_diags(window);
 
         self.line_renderer.render(window);
 

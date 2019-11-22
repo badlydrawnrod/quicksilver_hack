@@ -53,13 +53,14 @@ impl Player {
         }
     }
 
-    pub(crate) fn control(&mut self, forward_velocity: Vector, dx: f32, dy: f32, rotate_by: f32) {
+    pub(crate) fn advance(&mut self, forward_velocity: Vector) {
+        self.pos = self.pos.translate(forward_velocity);
+    }
+
+    pub(crate) fn control(&mut self, dx: f32, dy: f32, rotate_by: f32) {
         if self.health.is_dead() {
             return;
         }
-
-        // The player always moves forward at a steady rate.
-        self.pos = self.pos.translate(forward_velocity);
 
         // Apply movement due to input.
         if dx != 0.0 || dy != 0.0 {
