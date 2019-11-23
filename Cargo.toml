@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 #quicksilver = "*"
-quicksilver = { path = "../quicksilver", version = "*" }
+quicksilver = { git = "https://github.com/badlydrawnrod/quicksilver", branch = "timestep" }
+#quicksilver = { path = "../quicksilver", version = "*" }
 gilrs = "*"
 rand = "*"
 
