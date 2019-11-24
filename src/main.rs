@@ -7,6 +7,7 @@ mod line_renderer;
 mod loading;
 mod menu;
 mod playing;
+mod time;
 mod transformed;
 
 use quicksilver::{
