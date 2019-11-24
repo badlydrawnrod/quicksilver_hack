@@ -4,10 +4,11 @@ use crate::{
     font::{text_to_model, VectorFont},
     game_state::{
         Action,
-        Action::{Continue, Quit},
+        Action::{Continue, Transition},
         GameState,
     },
     line_renderer::{LineRenderer, RenderModel},
+    menu::Menu,
     playing::{
         camera::Camera,
         collision_assets::CollisionAssets,
@@ -48,6 +49,7 @@ const ROCKET_SCORE: i32 = 200;
 const TURRET_SCORE: i32 = 150;
 
 pub struct Playing {
+    assets: HashMap<String, Image>,
     camera: Camera,
     line_renderer: LineRenderer,
     player: Player,
@@ -75,7 +77,7 @@ pub struct Playing {
 }
 
 impl Playing {
-    pub(crate) fn new(images: HashMap<String, Image>) -> Result<Self> {
+    pub(crate) fn new(assets: HashMap<String, Image>) -> Result<Self> {
         let mut landscape = Vec::new();
         let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
@@ -85,11 +87,13 @@ impl Playing {
         }
         let render_assets = RenderAssets::new();
         let collision_assets = CollisionAssets::new();
+        println!("[PLAYING]");
         Ok(Self {
+            assets: assets.clone(),
             camera: Camera {
                 pos: Vector::new(0, 0),
             },
-            line_renderer: LineRenderer::new(images["line"].clone()),
+            line_renderer: LineRenderer::new(assets["line"].clone()),
             player: Player::new(
                 render_assets.player(),
                 collision_assets.player(),
@@ -104,7 +108,7 @@ impl Playing {
             input: Input::new()?,
             render_assets: render_assets,
             collision_assets: collision_assets,
-            particles: Particles::new(512, images["particle"].clone()),
+            particles: Particles::new(512, assets["particle"].clone()),
             font: VectorFont::new(),
             score: 0,
             score_model: RenderModel::new(Vec::new()),
@@ -388,7 +392,11 @@ impl GameState for Playing {
         reap(&mut self.turrets);
         reap(&mut self.turret_shots);
 
-        let result = if quit { Quit } else { Continue };
+        let result = if quit {
+            Transition(Box::new(Menu::new(self.assets.clone())?))
+        } else {
+            Continue
+        };
         result.into()
     }
 

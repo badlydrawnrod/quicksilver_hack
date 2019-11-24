@@ -5,6 +5,7 @@ mod font;
 mod game_state;
 mod line_renderer;
 mod loading;
+mod menu;
 mod playing;
 mod transformed;
 
@@ -70,7 +71,7 @@ fn main() {
         ..Settings::default()
     };
     run::<Game>(
-        "Quicksilver hack/lines",
+        "A Pure Rust Vector Game",
         Vector::new(WINDOW_WIDTH, WINDOW_HEIGHT),
         settings,
     );

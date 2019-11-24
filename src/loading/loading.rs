@@ -1,5 +1,5 @@
 use crate::{
-    playing::Playing,
+    menu::Menu,
     Action,
     Action::{Continue, Transition},
     GameState,
@@ -10,6 +10,7 @@ use quicksilver::{
     lifecycle::{Asset, Window},
     Result,
 };
+
 use std::collections::HashMap;
 
 pub struct Loading {
@@ -26,6 +27,7 @@ impl Loading {
                 Asset::new(Image::load(name.to_string() + ".png")),
             );
         }
+        println!("[LOADING]");
         Ok(Self {
             loading: loading,
             loaded: HashMap::new(),
@@ -49,7 +51,8 @@ impl GameState for Loading {
 
         let result = if self.loaded.len() == self.loading.len() {
             // We successfully loaded everything.
-            Transition(Box::new(Playing::new(self.loaded.clone())?))
+            println!("<<LOADED>>");
+            Transition(Box::new(Menu::new(self.loaded.clone())?))
         } else {
             // Still waiting.
             Continue
