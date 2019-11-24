@@ -28,7 +28,6 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(assets: HashMap<String, Image>) -> Result<Self> {
-        println!("[MENU]");
         let line_image = assets["line"].clone();
         Ok(Self {
             assets: assets,
@@ -45,12 +44,10 @@ impl GameState for Menu {
         let (quit, start) = self.input.poll(window);
 
         if quit {
-            println!("<<QUIT>>");
             return Quit.into();
         }
 
         if start {
-            println!("<<START>>");
             let result = Transition(Box::new(Playing::new(self.assets.clone())?));
             return result.into();
         }

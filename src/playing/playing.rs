@@ -87,7 +87,6 @@ impl Playing {
         }
         let render_assets = RenderAssets::new();
         let collision_assets = CollisionAssets::new();
-        println!("[PLAYING]");
         Ok(Self {
             assets: assets.clone(),
             camera: Camera {
