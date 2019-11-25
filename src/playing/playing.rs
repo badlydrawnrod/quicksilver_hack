@@ -12,7 +12,7 @@ use crate::{
     playing::{
         camera::Camera,
         collision_assets::CollisionAssets,
-        health::{reap, Health},
+        health::{Alive, Killable, Reapable},
         input::Input,
         landscape::{
             Landscape,
@@ -69,6 +69,7 @@ pub struct Playing {
     redraw_high_score: bool,
     last_draw_time: f64,
     delta: f32,
+    amnesty: i32,
 }
 
 impl Playing {
@@ -115,13 +116,17 @@ impl Playing {
             redraw_high_score: true,
             last_draw_time: current_time(),
             delta: 0.0,
+            amnesty: 0,
         })
+    }
+
+    fn is_amnesty(&self) -> bool {
+        self.amnesty > 0
     }
 
     /// Collide the player.
     fn collide_player(&mut self) {
-        let health: &Health = self.player.as_ref();
-        if !health.is_alive() {
+        if !self.player.is_alive() {
             return;
         }
 
@@ -130,32 +135,38 @@ impl Playing {
 
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
-            self.player.as_mut().kill();
+            self.player.kill();
             particles.add(128, player_pos, -90.0, 180.0);
         }
 
         // Collide the player with the rockets.
         collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
-            rocket.as_mut().kill();
-            player.as_mut().kill();
+            rocket.kill();
+            player.kill();
             particles.add(48, rocket.world_pos(), 0.0, 180.0);
             particles.add(128, player_pos, -90.0, 180.0);
         });
 
         // Collide the player with the turrets.
         collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
-            turret.as_mut().kill();
-            player.as_mut().kill();
+            turret.kill();
+            player.kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             particles.add(128, player_pos, -90.0, 180.0);
         });
 
         // Collide the player with the turrets' shots.
         collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
-            shot.as_mut().kill();
-            player.as_mut().kill();
+            shot.kill();
+            player.kill();
             particles.add(128, player.world_pos(), -90.0, 180.0);
         });
+
+        // Did the player die as a result of the collision checks?
+        if !self.player.is_alive() {
+            self.lives -= 1;
+            self.redraw_lives = true;
+        }
     }
 
     /// Collide the player's shots.
@@ -168,22 +179,22 @@ impl Playing {
 
         // Collide the player's shots with the landscape.
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
-            shot.as_mut().kill();
+            shot.kill();
             particles.add(4, shot.world_pos(), shot.angle() - 180.0, 15.0);
         });
 
         // Collide the player's shots with the rockets.
         collide_many_many(&mut self.shots, &mut self.rockets, |shot, rocket| {
-            shot.as_mut().kill();
-            rocket.as_mut().kill();
+            shot.kill();
+            rocket.kill();
             particles.add(48, rocket.world_pos(), shot.angle(), 30.0);
             *score += ROCKET_SCORE;
         });
 
         // Collide the player's shots with the turrets.
         collide_many_many(&mut self.shots, &mut self.turrets, |shot, turret| {
-            shot.as_mut().kill();
-            turret.as_mut().kill();
+            shot.kill();
+            turret.kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             *score += TURRET_SCORE;
         });
@@ -290,8 +301,9 @@ impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
         let (quit, fire, dx, dy, d_theta) = self.input.poll(window);
 
-        let health: &Health = self.player.as_ref();
-        if health.is_alive() {
+        let not_amnesty = !self.is_amnesty();
+
+        if self.player.is_alive() {
             let forward_velocity = Vector::new(FORWARD_SPEED * FIXED_UPDATE_INTERVAL_S as f32, 0.0);
             self.player.control(dx, dy, d_theta);
             if fire {
@@ -306,7 +318,7 @@ impl GameState for Playing {
             }
 
             match self.landscape.update(&self.camera) {
-                MakeTurret(line) => {
+                MakeTurret(line) if not_amnesty => {
                     let angle = (line.a - line.b).angle();
                     let midpoint = line.center();
                     let turret = Turret::new(
@@ -317,7 +329,7 @@ impl GameState for Playing {
                     );
                     self.turrets.push(turret);
                 }
-                MakeRocket(line) => {
+                MakeRocket(line) if not_amnesty => {
                     let angle = (line.a - line.b).angle();
                     let midpoint = line.center();
                     let rocket = Rocket::new(
@@ -343,7 +355,7 @@ impl GameState for Playing {
 
         for turret in &mut self.turrets {
             match turret.control(&playfield) {
-                MakeShot(pos, angle) => {
+                MakeShot(pos, angle) if not_amnesty => {
                     let shot = Shot::new(
                         self.render_assets.shot(),
                         self.collision_assets.shot(),
@@ -366,12 +378,15 @@ impl GameState for Playing {
         }
 
         self.check_collisions();
-        reap(&mut self.rockets);
-        reap(&mut self.shots);
-        reap(&mut self.turrets);
-        reap(&mut self.turret_shots);
+
+        self.rockets.reap();
+        self.shots.reap();
+        self.turrets.reap();
+        self.turret_shots.reap();
 
         let result = if quit {
+            Transition(Box::new(Menu::new(self.assets.clone())?))
+        } else if self.lives == 0 {
             Transition(Box::new(Menu::new(self.assets.clone())?))
         } else {
             Continue
@@ -385,8 +400,7 @@ impl GameState for Playing {
         self.delta = delta;
         self.last_draw_time = now;
 
-        let health: &Health = self.player.as_ref();
-        if health.is_alive() {
+        if self.player.is_alive() {
             // Drive the player and camera forward. The player is moved with the camera rather than
             // at a fixed rate to prevent it from stuttering when the update rate and draw rate are
             // not in sync.
