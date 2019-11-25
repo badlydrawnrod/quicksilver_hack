@@ -118,25 +118,6 @@ impl Playing {
         })
     }
 
-    fn kill_player(player: &mut Player, particles: &mut Particles) {
-        player.as_mut().kill();
-        particles.add(128, player.world_pos(), -90.0, 180.0);
-    }
-
-    fn kill_rocket(rocket: &mut Rocket, particles: &mut Particles) {
-        rocket.as_mut().kill();
-        particles.add(48, rocket.world_pos(), 0.0, 180.0);
-    }
-
-    fn kill_turret(turret: &mut Turret, particles: &mut Particles) {
-        turret.as_mut().kill();
-        particles.add(64, turret.world_pos(), 0.0, 45.0);
-    }
-
-    fn kill_shot(shot: &mut Shot) {
-        shot.as_mut().kill();
-    }
-
     /// Collide the player.
     fn collide_player(&mut self) {
         let health: &Health = self.player.as_ref();
@@ -145,28 +126,35 @@ impl Playing {
         }
 
         let particles = &mut self.particles;
+        let player_pos = self.player.world_pos();
 
         // Collide the player with the landscape.
         if collides_with(&self.player, &self.landscape) {
-            Playing::kill_player(&mut self.player, particles);
+            self.player.as_mut().kill();
+            particles.add(128, player_pos, -90.0, 180.0);
         }
 
         // Collide the player with the rockets.
         collide_many_one(&mut self.rockets, &mut self.player, |rocket, player| {
-            Playing::kill_rocket(rocket, particles);
-            Playing::kill_player(player, particles);
+            rocket.as_mut().kill();
+            player.as_mut().kill();
+            particles.add(48, rocket.world_pos(), 0.0, 180.0);
+            particles.add(128, player_pos, -90.0, 180.0);
         });
 
         // Collide the player with the turrets.
         collide_many_one(&mut self.turrets, &mut self.player, |turret, player| {
-            Playing::kill_turret(turret, particles);
-            Playing::kill_player(player, particles);
+            turret.as_mut().kill();
+            player.as_mut().kill();
+            particles.add(64, turret.world_pos(), 0.0, 45.0);
+            particles.add(128, player_pos, -90.0, 180.0);
         });
 
         // Collide the player with the turrets' shots.
         collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
-            Playing::kill_shot(shot);
-            Playing::kill_player(player, particles);
+            shot.as_mut().kill();
+            player.as_mut().kill();
+            particles.add(128, player.world_pos(), -90.0, 180.0);
         });
     }
 
