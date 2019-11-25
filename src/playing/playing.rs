@@ -149,6 +149,13 @@ impl Playing {
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             particles.add(128, player_pos, -90.0, 180.0);
         });
+
+        // Collide the player with the turrets' shots.
+        collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
+            shot.as_mut().kill();
+            player.as_mut().kill();
+            particles.add(128, player.world_pos(), -90.0, 180.0);
+        });
     }
 
     /// Collide the player's shots.
@@ -187,31 +194,9 @@ impl Playing {
         self.redraw_high_score = self.redraw_high_score || (self.high_score != old_high_score);
     }
 
-    /// Collide the turrets' shots.
-    fn collide_turret_shots(&mut self) {
-        let particles = &mut self.particles;
-
-        // Collide the turrets' shots with the landscape.
-        collide_many_one(
-            &mut self.turret_shots,
-            &mut self.landscape,
-            |shot, _landscape| {
-                shot.as_mut().kill();
-            },
-        );
-
-        // Collide the turrets' shots with the player.
-        collide_many_one(&mut self.turret_shots, &mut self.player, |shot, player| {
-            shot.as_mut().kill();
-            player.as_mut().kill();
-            particles.add(128, player.world_pos(), -90.0, 180.0);
-        });
-    }
-
     fn check_collisions(&mut self) {
         self.collide_player();
         self.collide_shots();
-        self.collide_turret_shots();
     }
 
     fn draw_status(&mut self) {
