@@ -69,7 +69,7 @@ pub struct Playing {
     redraw_high_score: bool,
     last_draw_time: f64,
     delta: f32,
-    amnesty: i32,
+    amnesty: f32,
 }
 
 impl Playing {
@@ -108,7 +108,7 @@ impl Playing {
             score: 0,
             score_model: RenderModel::new(Vec::new()),
             redraw_score: true,
-            lives: 3,
+            lives: 1,
             lives_model: RenderModel::new(Vec::new()),
             redraw_lives: true,
             high_score: 5000,
@@ -116,12 +116,12 @@ impl Playing {
             redraw_high_score: true,
             last_draw_time: current_time(),
             delta: 0.0,
-            amnesty: 0,
+            amnesty: 0.0,
         })
     }
 
     fn is_amnesty(&self) -> bool {
-        self.amnesty > 0
+        self.amnesty > 0.0
     }
 
     /// Collide the player.
@@ -166,6 +166,7 @@ impl Playing {
         if !self.player.is_alive() {
             self.lives -= 1;
             self.redraw_lives = true;
+            self.amnesty = 4.0 * (FIXED_UPDATE_INTERVAL_MS * FIXED_UPDATE_HZ) as f32;
         }
     }
 
@@ -301,6 +302,9 @@ impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
         let (quit, fire, dx, dy, d_theta) = self.input.poll(window);
 
+        if self.is_amnesty() {
+            self.amnesty -= FIXED_UPDATE_INTERVAL_MS as f32;
+        }
         let not_amnesty = !self.is_amnesty();
 
         if self.player.is_alive() {
@@ -386,7 +390,7 @@ impl GameState for Playing {
 
         let result = if quit {
             Transition(Box::new(Menu::new(self.assets.clone())?))
-        } else if self.lives == 0 {
+        } else if self.lives == 0 && !self.is_amnesty() {
             Transition(Box::new(Menu::new(self.assets.clone())?))
         } else {
             Continue
