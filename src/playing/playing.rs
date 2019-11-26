@@ -108,7 +108,7 @@ impl Playing {
             score: 0,
             score_model: RenderModel::new(Vec::new()),
             redraw_score: true,
-            lives: 1,
+            lives: 3,
             lives_model: RenderModel::new(Vec::new()),
             redraw_lives: true,
             high_score: 5000,
@@ -122,6 +122,23 @@ impl Playing {
 
     fn is_amnesty(&self) -> bool {
         self.amnesty > 0.0
+    }
+
+    fn reset_after_death(&mut self) {
+        self.player = Player::new(
+            self.render_assets.player(),
+            self.collision_assets.player(),
+            Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4),
+            90.0,
+        );
+        self.camera = Camera {
+            pos: Vector::new(0, 0),
+        };
+        self.landscape = Landscape::new();
+        self.shots.clear();
+        self.rockets.clear();
+        self.turrets.clear();
+        self.turret_shots.clear();
     }
 
     /// Collide the player.
@@ -304,6 +321,9 @@ impl GameState for Playing {
 
         if self.is_amnesty() {
             self.amnesty -= FIXED_UPDATE_INTERVAL_MS as f32;
+            if self.amnesty <= 0.0 && self.lives > 0 {
+                self.reset_after_death();
+            }
         }
         let not_amnesty = !self.is_amnesty();
 
