@@ -260,6 +260,25 @@ impl Playing {
             self.lives_model.clone(),
             Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0)),
         );
+
+        if self.is_amnesty() && self.amnesty % 1000.0 < 600.0 {
+            let message = if self.lives == 0 {
+                "GAME OVER"
+            } else {
+                "GET READY"
+            };
+            let message_model = text_to_model(&self.font, message);
+            self.line_renderer.add_model(
+                message_model,
+                Transform::translate(
+                    self.camera.pos
+                        + Vector::new(
+                            VIRTUAL_WIDTH as f32 / 2.0 - 50.0,
+                            VIRTUAL_HEIGHT as f32 / 2.0,
+                        ),
+                ),
+            );
+        }
     }
 
     fn draw_diags(&mut self, window: &mut Window, alpha: f64) {
