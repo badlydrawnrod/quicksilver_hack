@@ -1,15 +1,17 @@
-use quicksilver::geom::{Shape, Transform, Vector};
+use quicksilver::geom::{Rectangle, Shape, Transform, Vector};
 
 use crate::collision_lines::{CollisionLines, CollisionModel};
 use crate::line_renderer::{LineRenderer, RenderModel};
 
 use super::world_pos::WorldPos;
+use crate::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use crate::playing::health::Health;
 
 pub struct Player {
     pos: Vector,
     angle: f32,
     velocity: Vector,
+    bounds: Rectangle,
     render_model: RenderModel,
     collision_model: CollisionModel,
     collision_lines: CollisionLines,
@@ -48,6 +50,7 @@ impl Player {
             pos,
             angle,
             velocity: Vector::ZERO,
+            bounds: Rectangle::new((0, 0), (2 * VIRTUAL_WIDTH / 3, VIRTUAL_HEIGHT)),
             render_model: render_model,
             collision_model: collision_model,
             collision_lines: CollisionLines::new(),
@@ -57,6 +60,7 @@ impl Player {
 
     pub(crate) fn advance(&mut self, forward_velocity: Vector) {
         self.pos = self.pos.translate(forward_velocity);
+        self.bounds = self.bounds.translate(forward_velocity);
     }
 
     pub(crate) fn control(&mut self, dx: f32, dy: f32, rotate_by: f32) {
@@ -69,6 +73,12 @@ impl Player {
         if dx != 0.0 || dy != 0.0 {
             self.pos += self.velocity;
         }
+        // Clamp the player to the bounds. This isn't ideal, because the bounds are updated with
+        // the camera when drawing, so there's some slight but discernible stutter if you know
+        // where to look.
+        self.pos = self
+            .pos
+            .clamp(self.bounds.pos, self.bounds.pos + self.bounds.size);
 
         // Update the rotation.
         if rotate_by != 0.0 {
