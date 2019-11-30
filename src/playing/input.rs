@@ -19,13 +19,14 @@ impl Input {
     }
 
     /// Poll all possible input sources.
-    pub fn poll(&mut self, window: &mut Window) -> (bool, bool, f32, f32) {
+    pub fn poll(&mut self, window: &mut Window) -> (bool, bool, bool, f32, f32) {
         let mut quit = false;
         let mut right_pressed = false;
         let mut left_pressed = false;
         let mut up_pressed = false;
         let mut down_pressed = false;
         let mut fire: bool = false;
+        let mut bomb: bool = false;
 
         // Examine new gamepad events using GilRs directly as Quicksilver doesn't see some of the
         // buttons.
@@ -38,9 +39,10 @@ impl Input {
             // Check the gamepad for edge-triggered scenarios such as a button being pressed or
             // released in this turn.
             match event.event {
-                // Quitting and firing are edge-triggered.
+                // Quitting, firing and bombing are edge-triggered.
                 EventType::ButtonReleased(Button::Start, _) => quit = true,
-                EventType::ButtonPressed(Button::South, _) => fire = true,
+                EventType::ButtonPressed(Button::East, _) => fire = true,
+                EventType::ButtonPressed(Button::South, _) => bomb = true,
                 _ => (),
             };
         }
@@ -55,9 +57,14 @@ impl Input {
             down_pressed = down_pressed || gamepad.is_pressed(Button::DPadDown);
         }
 
-        // Check the keyboard for edge-triggered events. Quitting and firing are edge-triggered.
+        // Check the keyboard for edge-triggered events such as quitting, firing and bombing.
         quit = quit || window.keyboard()[Key::Escape] == ButtonState::Released;
-        fire = fire || window.keyboard()[Key::Space] == ButtonState::Pressed;
+        fire = fire
+            || window.keyboard()[Key::Return] == ButtonState::Pressed
+            || window.keyboard()[Key::P] == ButtonState::Pressed;
+        bomb = bomb
+            || window.keyboard()[Key::Space] == ButtonState::Pressed
+            || window.keyboard()[Key::O] == ButtonState::Pressed;
 
         // Check the keyboard for level-triggered events. All movement is level-triggered.
         left_pressed = left_pressed
@@ -84,6 +91,6 @@ impl Input {
             _ => 0.0,
         };
 
-        (quit, fire, dx, dy)
+        (quit, fire, bomb, dx, dy)
     }
 }

@@ -3,6 +3,7 @@ use quicksilver::geom::Line;
 
 pub struct CollisionAssets {
     shot: CollisionModel,
+    bomb: CollisionModel,
     turret: CollisionModel,
     player: CollisionModel,
     rocket: CollisionModel,
@@ -15,6 +16,15 @@ impl CollisionAssets {
             Line::new((4, 4), (0, -4)),
             Line::new((0, -4), (-4, 4)),
             Line::new((0, 0), (0, -8)),
+        ];
+
+        let bomb_lines = vec![
+            Line::new((-8, 4), (0, 2)),
+            Line::new((8, 4), (0, 2)),
+            Line::new((8, 4), (0, -4)),
+            Line::new((0, -4), (-8, 4)),
+            Line::new((4, 0), (0, -12)),
+            Line::new((-4, 0), (0, -12)),
         ];
 
         let turret_lines = vec![
@@ -46,6 +56,7 @@ impl CollisionAssets {
 
         CollisionAssets {
             shot: CollisionModel::new(shot_lines),
+            bomb: CollisionModel::new(bomb_lines),
             turret: CollisionModel::new(turret_lines),
             player: CollisionModel::new(player_lines),
             rocket: CollisionModel::new(rocket_lines),
@@ -54,6 +65,10 @@ impl CollisionAssets {
 
     pub fn shot(&self) -> CollisionModel {
         self.shot.clone()
+    }
+
+    pub fn bomb(&self) -> CollisionModel {
+        self.bomb.clone()
     }
 
     pub fn turret(&self) -> CollisionModel {

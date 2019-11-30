@@ -1,3 +1,4 @@
+mod bomb;
 mod camera;
 mod collision_assets;
 mod health;

@@ -10,6 +10,7 @@ use crate::{
     line_renderer::{LineRenderer, RenderModel},
     menu::Menu,
     playing::{
+        bomb::Bomb,
         camera::Camera,
         collision_assets::CollisionAssets,
         health::{Alive, Killable, Reapable},
@@ -50,6 +51,7 @@ pub struct Playing {
     player: Player,
     landscape: Landscape,
     shots: Vec<Shot>,
+    bombs: Vec<Bomb>,
     rockets: Vec<Rocket>,
     turrets: Vec<Turret>,
     turret_shots: Vec<Shot>,
@@ -96,6 +98,7 @@ impl Playing {
             ),
             landscape: Landscape::new(),
             shots: Vec::new(),
+            bombs: Vec::new(),
             rockets: Vec::new(),
             turrets: Vec::new(),
             turret_shots: Vec::new(),
@@ -134,6 +137,7 @@ impl Playing {
         };
         self.landscape = Landscape::new();
         self.shots.clear();
+        self.bombs.clear();
         self.rockets.clear();
         self.turrets.clear();
         self.turret_shots.clear();
@@ -210,6 +214,28 @@ impl Playing {
         // Collide the player's shots with the turrets.
         collide_many_many(&mut self.shots, &mut self.turrets, |shot, turret| {
             shot.kill();
+            turret.kill();
+            particles.add(64, turret.world_pos(), 0.0, 45.0);
+            *score += TURRET_SCORE;
+        });
+
+        // Collide the player's bombs with the landscape.
+        collide_many_one(&mut self.bombs, &mut self.landscape, |bomb, _landscape| {
+            bomb.kill();
+            particles.add(12, bomb.world_pos(), 0.0, 30.0);
+        });
+
+        // Collide the player's bombs with the rockets.
+        collide_many_many(&mut self.bombs, &mut self.rockets, |bomb, rocket| {
+            bomb.kill();
+            rocket.kill();
+            particles.add(48, rocket.world_pos(), 0.0, 180.0);
+            *score += ROCKET_SCORE;
+        });
+
+        // Collide the player's bombs with the turrets.
+        collide_many_many(&mut self.bombs, &mut self.turrets, |bomb, turret| {
+            bomb.kill();
             turret.kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             *score += TURRET_SCORE;
@@ -334,7 +360,7 @@ fn rescale_viewport(window: &mut Window, translate: Vector) {
 
 impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
-        let (quit, fire, dx, dy) = self.input.poll(window);
+        let (quit, fire, bomb, dx, dy) = self.input.poll(window);
 
         if self.is_amnesty() {
             self.amnesty -= FIXED_UPDATE_INTERVAL_MS as f32;
@@ -356,6 +382,15 @@ impl GameState for Playing {
                     self.player.angle(),
                 );
                 self.shots.push(shot);
+            }
+            if bomb {
+                let bomb = Bomb::new(
+                    self.render_assets.bomb(),
+                    self.collision_assets.bomb(),
+                    self.player.world_pos(),
+                    forward_velocity * 1.25,
+                );
+                self.bombs.push(bomb);
             }
 
             match self.landscape.update(&self.camera) {
@@ -414,6 +449,10 @@ impl GameState for Playing {
             shot.control(&playfield);
         }
 
+        for bomb in &mut self.bombs {
+            bomb.control(&playfield);
+        }
+
         for shot in &mut self.turret_shots {
             shot.control(&playfield);
         }
@@ -422,6 +461,7 @@ impl GameState for Playing {
 
         self.rockets.reap();
         self.shots.reap();
+        self.bombs.reap();
         self.turrets.reap();
         self.turret_shots.reap();
 
@@ -465,6 +505,9 @@ impl GameState for Playing {
         self.player.draw(&mut self.line_renderer, alpha);
         for shot in &self.shots {
             shot.draw(&mut self.line_renderer, alpha);
+        }
+        for bomb in &self.bombs {
+            bomb.draw(&mut self.line_renderer, alpha);
         }
         for shot in &self.turret_shots {
             shot.draw(&mut self.line_renderer, alpha);

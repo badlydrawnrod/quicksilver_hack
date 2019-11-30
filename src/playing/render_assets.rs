@@ -3,6 +3,7 @@ use quicksilver::prelude::Color;
 
 pub struct RenderAssets {
     shot: RenderModel,
+    bomb: RenderModel,
     turret: RenderModel,
     player: RenderModel,
     rocket: RenderModel,
@@ -15,6 +16,15 @@ impl RenderAssets {
             TintedLine::new((4, 4), (0, -4), Color::GREEN),
             TintedLine::new((0, -4), (-4, 4), Color::GREEN),
             TintedLine::new((0, 0), (0, -8), Color::GREEN),
+        ];
+
+        let bomb_lines = vec![
+            TintedLine::new((-8, 4), (0, 2), Color::GREEN),
+            TintedLine::new((8, 4), (0, 2), Color::GREEN),
+            TintedLine::new((8, 4), (0, -4), Color::GREEN),
+            TintedLine::new((0, -4), (-8, 4), Color::GREEN),
+            TintedLine::new((4, 0), (0, -12), Color::GREEN),
+            TintedLine::new((-4, 0), (0, -12), Color::GREEN),
         ];
 
         let turret_lines = vec![
@@ -46,6 +56,7 @@ impl RenderAssets {
 
         RenderAssets {
             shot: RenderModel::new(shot_lines),
+            bomb: RenderModel::new(bomb_lines),
             turret: RenderModel::new(turret_lines),
             player: RenderModel::new(player_lines),
             rocket: RenderModel::new(rocket_lines),
@@ -54,6 +65,10 @@ impl RenderAssets {
 
     pub fn shot(&self) -> RenderModel {
         self.shot.clone()
+    }
+
+    pub fn bomb(&self) -> RenderModel {
+        self.bomb.clone()
     }
 
     pub fn turret(&self) -> RenderModel {
