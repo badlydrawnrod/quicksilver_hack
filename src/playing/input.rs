@@ -41,8 +41,8 @@ impl Input {
             match event.event {
                 // Quitting, firing and bombing are edge-triggered.
                 EventType::ButtonReleased(Button::Start, _) => quit = true,
-                EventType::ButtonPressed(Button::East, _) => fire = true,
-                EventType::ButtonPressed(Button::South, _) => bomb = true,
+                EventType::ButtonPressed(Button::South, _) => fire = true,
+                EventType::ButtonPressed(Button::West, _) => bomb = true,
                 _ => (),
             };
         }
