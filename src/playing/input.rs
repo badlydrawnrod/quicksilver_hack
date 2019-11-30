@@ -1,4 +1,4 @@
-use gilrs::{Button, EventType, GamepadId, Gilrs};
+use gilrs::{Axis, Button, EventType, GamepadId, Gilrs};
 use quicksilver::{
     input::{ButtonState, Key},
     lifecycle::Window,
@@ -47,14 +47,25 @@ impl Input {
             };
         }
 
-        // Check the gamepad for level-triggered events, such as button being held down. All
-        // movement is level-triggered.
+        let mut stick_x: f32 = 0.0;
+        let mut stick_y: f32 = 0.0;
+
+        // Check the gamepad's state for level-triggered events (movement).
         if let Some(id) = self.active_gamepad {
             let gamepad = self.gilrs.gamepad(id);
+
             left_pressed = left_pressed || gamepad.is_pressed(Button::DPadLeft);
             right_pressed = right_pressed || gamepad.is_pressed(Button::DPadRight);
             up_pressed = up_pressed || gamepad.is_pressed(Button::DPadUp);
             down_pressed = down_pressed || gamepad.is_pressed(Button::DPadDown);
+
+            // Check the left stick.
+            if let Some(left_stick_x) = gamepad.axis_data(Axis::LeftStickX) {
+                stick_x = left_stick_x.value();
+            }
+            if let Some(left_stick_y) = gamepad.axis_data(Axis::LeftStickY) {
+                stick_y = -left_stick_y.value();
+            }
         }
 
         // Check the keyboard for edge-triggered events such as quitting, firing and bombing.
@@ -83,12 +94,12 @@ impl Input {
         let dx = match (left_pressed, right_pressed) {
             (true, false) => -1.0,
             (false, true) => 1.0,
-            _ => 0.0,
+            _ => stick_x,
         };
         let dy = match (up_pressed, down_pressed) {
             (true, false) => -1.0,
             (false, true) => 1.0,
-            _ => 0.0,
+            _ => stick_y,
         };
 
         (quit, fire, bomb, dx, dy)
