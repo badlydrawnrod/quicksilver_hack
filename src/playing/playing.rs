@@ -44,6 +44,8 @@ const FORWARD_SPEED: f32 = 240.0;
 const ROCKET_SCORE: i32 = 200;
 const TURRET_SCORE: i32 = 150;
 
+const BOMB_COOLDOWN_TICKS: i32 = 20;
+
 pub struct Playing {
     assets: HashMap<String, Image>,
     camera: Camera,
@@ -72,6 +74,7 @@ pub struct Playing {
     last_draw_time: f64,
     delta: f32,
     amnesty: f32,
+    bomb_cooldown: i32,
 }
 
 impl Playing {
@@ -119,6 +122,7 @@ impl Playing {
             last_draw_time: current_time(),
             delta: 0.0,
             amnesty: 0.0,
+            bomb_cooldown: 0,
         })
     }
 
@@ -141,6 +145,7 @@ impl Playing {
         self.rockets.clear();
         self.turrets.clear();
         self.turret_shots.clear();
+        self.bomb_cooldown = 0;
     }
 
     /// Collide the player.
@@ -370,6 +375,8 @@ impl GameState for Playing {
         }
         let not_amnesty = !self.is_amnesty();
 
+        self.bomb_cooldown = 0.max(self.bomb_cooldown - 1);
+
         if self.player.is_alive() {
             let forward_velocity = Vector::new(FORWARD_SPEED * FIXED_UPDATE_INTERVAL_S as f32, 0.0);
             self.player.control(dx, dy);
@@ -383,7 +390,7 @@ impl GameState for Playing {
                 );
                 self.shots.push(shot);
             }
-            if bomb {
+            if bomb && self.bomb_cooldown == 0 {
                 let bomb = Bomb::new(
                     self.render_assets.bomb(),
                     self.collision_assets.bomb(),
@@ -391,6 +398,7 @@ impl GameState for Playing {
                     forward_velocity * 1.25,
                 );
                 self.bombs.push(bomb);
+                self.bomb_cooldown = BOMB_COOLDOWN_TICKS;
             }
 
             match self.landscape.update(&self.camera) {
