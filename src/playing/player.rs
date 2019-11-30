@@ -87,7 +87,7 @@ impl Player {
         if self.health.is_alive() {
             let pos = self.world_pos() + self.velocity * alpha as f32;
             let transform = Transform::translate(pos) * Transform::rotate(self.angle);
-            line_renderer.add_model(self.render_model.clone(), transform);
+            line_renderer.add_model(&self.render_model, transform);
         }
     }
 }

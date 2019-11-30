@@ -85,7 +85,7 @@ impl Turret {
     /// Draw the turret to the given line renderer.
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer) {
         let transform = Transform::translate(self.pos) * Transform::rotate(self.angle);
-        line_renderer.add_model(self.render_model.clone(), transform);
+        line_renderer.add_model(&self.render_model, transform);
     }
 }
 

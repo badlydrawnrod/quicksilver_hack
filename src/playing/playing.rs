@@ -264,7 +264,7 @@ impl Playing {
             self.score_model = text_to_model(&self.font, score.as_str());
         }
         self.line_renderer.add_model(
-            self.score_model.clone(),
+            &self.score_model,
             Transform::translate(self.camera.pos + Vector::new(4.0, 28.0)),
         );
 
@@ -274,7 +274,7 @@ impl Playing {
             self.high_score_model = text_to_model(&self.font, high_score.as_str());
         }
         self.line_renderer.add_model(
-            self.high_score_model.clone(),
+            &self.high_score_model,
             Transform::translate(
                 self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 / 2.0 - 140.0, 28.0),
             ),
@@ -286,7 +286,7 @@ impl Playing {
             self.lives_model = text_to_model(&self.font, lives.as_str());
         }
         self.line_renderer.add_model(
-            self.lives_model.clone(),
+            &self.lives_model,
             Transform::translate(self.camera.pos + Vector::new(VIRTUAL_WIDTH as f32 - 140.0, 28.0)),
         );
 
@@ -298,7 +298,7 @@ impl Playing {
             };
             let message_model = text_to_model(&self.font, message);
             self.line_renderer.add_model(
-                message_model,
+                &message_model,
                 Transform::translate(
                     self.camera.pos
                         + Vector::new(
@@ -315,7 +315,7 @@ impl Playing {
         let fps = format!("FPS: {:2.2}", window.current_fps());
         let fps_model = text_to_model(&self.font, fps.as_str());
         self.line_renderer.add_model(
-            fps_model,
+            &fps_model,
             Transform::translate(
                 self.camera.pos
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 64.0),
@@ -326,7 +326,7 @@ impl Playing {
         let fps = format!("AVG: {:2.2}", window.average_fps());
         let fps_model = text_to_model(&self.font, fps.as_str());
         self.line_renderer.add_model(
-            fps_model,
+            &fps_model,
             Transform::translate(
                 self.camera.pos
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 128.0),
@@ -337,7 +337,7 @@ impl Playing {
         let t = format!("DEL: {:02.2}", self.delta);
         let t_model = text_to_model(&self.font, t.as_str());
         self.line_renderer.add_model(
-            t_model,
+            &t_model,
             Transform::translate(
                 self.camera.pos
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 192.0),
@@ -348,7 +348,7 @@ impl Playing {
         let t = format!("ALP: {:1.3}", alpha);
         let t_model = text_to_model(&self.font, t.as_str());
         self.line_renderer.add_model(
-            t_model,
+            &t_model,
             Transform::translate(
                 self.camera.pos
                     + Vector::new(VIRTUAL_WIDTH as f32 - 200.0, VIRTUAL_HEIGHT as f32 - 256.0),

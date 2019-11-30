@@ -43,6 +43,12 @@ impl RenderModel {
     }
 }
 
+impl AsRef<RenderModel> for RenderModel {
+    fn as_ref(&self) -> &RenderModel {
+        &self
+    }
+}
+
 /// A renderer for lines with a given image.
 pub struct LineRenderer {
     /// The image used for all of the lines.
@@ -80,7 +86,8 @@ impl LineRenderer {
     }
 
     /// Add the given model, transformed, to this line renderer's mesh.
-    pub(crate) fn add_model(&mut self, render_model: RenderModel, transform: Transform) {
+    pub fn add_model<T: AsRef<RenderModel>>(&mut self, render_model: T, transform: Transform) {
+        let render_model = render_model.as_ref();
         let transformed = render_model
             .lines
             .iter()

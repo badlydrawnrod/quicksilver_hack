@@ -64,7 +64,7 @@ impl GameState for Menu {
         let title = "A PURE RUST VECTOR GAME";
         let text_model = text_to_model(&self.font, title);
         self.line_renderer.add_model(
-            text_model,
+            &text_model,
             Transform::translate(Vector::new(VIRTUAL_WIDTH / 2 - 190, 1 * VIRTUAL_HEIGHT / 8)),
         );
 
@@ -72,7 +72,7 @@ impl GameState for Menu {
             let press_start = "PRESS START";
             let text_model = text_to_model(&self.font, press_start);
             self.line_renderer.add_model(
-                text_model,
+                &text_model,
                 Transform::translate(Vector::new(VIRTUAL_WIDTH / 2 - 70, 7 * VIRTUAL_HEIGHT / 8)),
             );
         }

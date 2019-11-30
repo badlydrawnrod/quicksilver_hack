@@ -81,7 +81,13 @@ impl Rocket {
     pub(crate) fn draw(&self, line_renderer: &mut LineRenderer, alpha: f64) {
         let pos = self.pos + self.velocity * alpha as f32;
         let transform = Transform::translate(pos) * Transform::rotate(self.angle);
-        line_renderer.add_model(self.render_model.clone(), transform);
+        line_renderer.add_model(&self.render_model, transform);
+    }
+}
+
+impl AsRef<RenderModel> for Rocket {
+    fn as_ref(&self) -> &RenderModel {
+        &self.render_model
     }
 }
 
