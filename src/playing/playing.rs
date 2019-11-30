@@ -93,7 +93,6 @@ impl Playing {
                 render_assets.player(),
                 collision_assets.player(),
                 Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4),
-                90.0,
             ),
             landscape: Landscape::new(),
             shots: Vec::new(),
@@ -129,7 +128,6 @@ impl Playing {
             self.render_assets.player(),
             self.collision_assets.player(),
             Vector::new(VIRTUAL_WIDTH / 4, VIRTUAL_HEIGHT / 4),
-            90.0,
         );
         self.camera = Camera {
             pos: Vector::new(0, 0),
@@ -336,7 +334,7 @@ fn rescale_viewport(window: &mut Window, translate: Vector) {
 
 impl GameState for Playing {
     fn update(&mut self, window: &mut Window) -> Result<Action> {
-        let (quit, fire, dx, dy, d_theta) = self.input.poll(window);
+        let (quit, fire, dx, dy) = self.input.poll(window);
 
         if self.is_amnesty() {
             self.amnesty -= FIXED_UPDATE_INTERVAL_MS as f32;
@@ -348,7 +346,7 @@ impl GameState for Playing {
 
         if self.player.is_alive() {
             let forward_velocity = Vector::new(FORWARD_SPEED * FIXED_UPDATE_INTERVAL_S as f32, 0.0);
-            self.player.control(dx, dy, d_theta);
+            self.player.control(dx, dy);
             if fire {
                 let shot = Shot::new(
                     self.render_assets.shot(),

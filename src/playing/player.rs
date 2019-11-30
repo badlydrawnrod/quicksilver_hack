@@ -40,15 +40,10 @@ impl AsMut<Health> for Player {
 }
 
 impl Player {
-    pub fn new(
-        render_model: RenderModel,
-        collision_model: CollisionModel,
-        pos: Vector,
-        angle: f32,
-    ) -> Self {
+    pub fn new(render_model: RenderModel, collision_model: CollisionModel, pos: Vector) -> Self {
         Player {
             pos,
-            angle,
+            angle: 90.0,
             velocity: Vector::ZERO,
             bounds: Rectangle::new((0, 0), (2 * VIRTUAL_WIDTH / 3, VIRTUAL_HEIGHT)),
             render_model: render_model,
@@ -63,7 +58,7 @@ impl Player {
         self.bounds = self.bounds.translate(forward_velocity);
     }
 
-    pub(crate) fn control(&mut self, dx: f32, dy: f32, rotate_by: f32) {
+    pub(crate) fn control(&mut self, dx: f32, dy: f32) {
         if self.health.is_dead() {
             return;
         }
@@ -79,11 +74,6 @@ impl Player {
         self.pos = self
             .pos
             .clamp(self.bounds.pos, self.bounds.pos + self.bounds.size);
-
-        // Update the rotation.
-        if rotate_by != 0.0 {
-            self.angle += rotate_by * 4.0;
-        }
 
         // Update the transformed model from the original model.
         let transform = Transform::translate(self.world_pos()) * Transform::rotate(self.angle);
