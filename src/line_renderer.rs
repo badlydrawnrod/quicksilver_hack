@@ -8,7 +8,6 @@ use quicksilver::{
 };
 
 use crate::transformed::Transformable;
-use std::borrow::BorrowMut;
 use std::rc::Rc;
 
 #[derive(Copy, Clone)]
@@ -77,7 +76,7 @@ impl LineRenderer {
         for tinted_line in lines {
             let line = tinted_line.line;
             line.draw(
-                self.mesh.borrow_mut(),
+                &mut self.mesh,
                 Blended(&self.image, tinted_line.colour),
                 identity,
                 0.0,
@@ -86,8 +85,7 @@ impl LineRenderer {
     }
 
     /// Add the given model, transformed, to this line renderer's mesh.
-    pub fn add_model(&mut self, render_model: impl AsRef<RenderModel>, transform: Transform) {
-        let render_model = render_model.as_ref();
+    pub fn add_model(&mut self, render_model: &RenderModel, transform: Transform) {
         let transformed = render_model
             .lines
             .iter()
