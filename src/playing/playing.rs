@@ -78,7 +78,7 @@ pub struct Playing {
 }
 
 impl Playing {
-    pub(crate) fn new(assets: HashMap<String, Image>) -> Result<Self> {
+    pub(crate) fn new(assets: HashMap<String, Image>, high_score: i32) -> Result<Self> {
         let mut landscape = Vec::new();
         let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
@@ -116,7 +116,7 @@ impl Playing {
             lives: 3,
             lives_model: RenderModel::new(Vec::new()),
             redraw_lives: true,
-            high_score: 5000,
+            high_score: high_score,
             high_score_model: RenderModel::new(Vec::new()),
             redraw_high_score: true,
             last_draw_time: current_time(),
@@ -474,9 +474,17 @@ impl GameState for Playing {
         self.turret_shots.reap();
 
         let result = if quit {
-            Transition(Box::new(Menu::new(self.assets.clone())?))
+            Transition(Box::new(Menu::new(
+                self.assets.clone(),
+                self.high_score,
+                None,
+            )?))
         } else if self.lives == 0 && !self.is_amnesty() {
-            Transition(Box::new(Menu::new(self.assets.clone())?))
+            Transition(Box::new(Menu::new(
+                self.assets.clone(),
+                self.high_score,
+                Some(self.score),
+            )?))
         } else {
             Continue
         };

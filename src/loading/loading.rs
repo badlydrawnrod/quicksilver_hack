@@ -16,6 +16,7 @@ use std::collections::HashMap;
 pub struct Loading {
     loading: HashMap<String, Asset<Image>>,
     loaded: HashMap<String, Image>,
+    high_score: i32,
 }
 
 impl Loading {
@@ -27,9 +28,12 @@ impl Loading {
                 Asset::new(Image::load(name.to_string() + ".png")),
             );
         }
+        // It may seem strange to put the initial high score here, but ultimately it'll probably be
+        // loaded much like other assets are.
         Ok(Self {
             loading: loading,
             loaded: HashMap::new(),
+            high_score: 5000,
         })
     }
 }
@@ -50,7 +54,11 @@ impl GameState for Loading {
 
         let result = if self.loaded.len() == self.loading.len() {
             // We successfully loaded everything.
-            Transition(Box::new(Menu::new(self.loaded.clone())?))
+            Transition(Box::new(Menu::new(
+                self.loaded.clone(),
+                self.high_score,
+                None,
+            )?))
         } else {
             // Still waiting.
             Continue

@@ -24,10 +24,16 @@ pub struct Menu {
     line_renderer: LineRenderer,
     font: VectorFont,
     ticks: u32,
+    high_score: i32,
+    last_score: Option<i32>,
 }
 
 impl Menu {
-    pub fn new(assets: HashMap<String, Image>) -> Result<Self> {
+    pub fn new(
+        assets: HashMap<String, Image>,
+        high_score: i32,
+        last_score: Option<i32>,
+    ) -> Result<Self> {
         let line_image = assets["line"].clone();
         Ok(Self {
             assets: assets,
@@ -35,6 +41,8 @@ impl Menu {
             line_renderer: LineRenderer::new(line_image),
             font: VectorFont::new(),
             ticks: 0,
+            high_score: high_score,
+            last_score: last_score,
         })
     }
 }
@@ -48,7 +56,10 @@ impl GameState for Menu {
         }
 
         if start {
-            let result = Transition(Box::new(Playing::new(self.assets.clone())?));
+            let result = Transition(Box::new(Playing::new(
+                self.assets.clone(),
+                self.high_score,
+            )?));
             return result.into();
         }
 
@@ -66,6 +77,28 @@ impl GameState for Menu {
         self.line_renderer.add_model(
             &text_model,
             Transform::translate(Vector::new(VIRTUAL_WIDTH / 2 - 190, 1 * VIRTUAL_HEIGHT / 8)),
+        );
+
+        if let Some(last_score) = self.last_score {
+            let score = format!("LAST SCORE:{:06}", last_score);
+            let score_model = text_to_model(&self.font, score.as_str());
+            self.line_renderer.add_model(
+                &score_model,
+                Transform::translate(Vector::new(
+                    VIRTUAL_WIDTH as f32 / 2.0 - 140.0,
+                    60.0 + VIRTUAL_HEIGHT as f32 / 2.0,
+                )),
+            );
+        }
+
+        let high_score = format!("HIGH SCORE:{:06}", self.high_score);
+        let high_score_model = text_to_model(&self.font, high_score.as_str());
+        self.line_renderer.add_model(
+            &high_score_model,
+            Transform::translate(Vector::new(
+                VIRTUAL_WIDTH as f32 / 2.0 - 140.0,
+                VIRTUAL_HEIGHT as f32 / 2.0,
+            )),
         );
 
         if self.ticks % 50 < 30 {
