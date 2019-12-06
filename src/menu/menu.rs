@@ -2,6 +2,7 @@ use crate::{
     constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH},
     font::{text_to_model, VectorFont},
     line_renderer::LineRenderer,
+    loading::GameAssets,
     menu::input::Input,
     playing::Playing,
     Action,
@@ -11,15 +12,15 @@ use crate::{
 
 use quicksilver::{
     geom::{Transform, Vector},
-    graphics::{BlendMode, Image},
+    graphics::BlendMode,
     lifecycle::Window,
     Result,
 };
 
-use std::collections::HashMap;
+use std::rc::Rc;
 
 pub struct Menu {
-    assets: HashMap<String, Image>,
+    assets: Rc<GameAssets>,
     input: Input,
     line_renderer: LineRenderer,
     font: VectorFont,
@@ -29,14 +30,10 @@ pub struct Menu {
 }
 
 impl Menu {
-    pub fn new(
-        assets: HashMap<String, Image>,
-        high_score: i32,
-        last_score: Option<i32>,
-    ) -> Result<Self> {
-        let line_image = assets["line"].clone();
+    pub fn new(assets: Rc<GameAssets>, high_score: i32, last_score: Option<i32>) -> Result<Self> {
+        let line_image = assets.images["line"].clone();
         Ok(Self {
-            assets: assets,
+            assets: Rc::clone(&assets),
             input: Input::new()?,
             line_renderer: LineRenderer::new(line_image),
             font: VectorFont::new(),

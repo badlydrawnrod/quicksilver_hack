@@ -8,6 +8,7 @@ use crate::{
         GameState,
     },
     line_renderer::{LineRenderer, RenderModel},
+    loading::GameAssets,
     menu::Menu,
     playing::{
         bomb::Bomb,
@@ -32,12 +33,12 @@ use crate::{
 
 use quicksilver::{
     geom::{Line, Rectangle, Shape, Transform, Vector},
-    graphics::{BlendMode, Image, View},
+    graphics::{BlendMode, View},
     lifecycle::Window,
     Result,
 };
 
-use std::collections::HashMap;
+use std::rc::Rc;
 
 const FORWARD_SPEED: f32 = 240.0;
 
@@ -47,7 +48,7 @@ const TURRET_SCORE: i32 = 150;
 const BOMB_COOLDOWN_TICKS: i32 = 20;
 
 pub struct Playing {
-    assets: HashMap<String, Image>,
+    assets: Rc<GameAssets>,
     camera: Camera,
     line_renderer: LineRenderer,
     player: Player,
@@ -78,7 +79,7 @@ pub struct Playing {
 }
 
 impl Playing {
-    pub(crate) fn new(assets: HashMap<String, Image>, high_score: i32) -> Result<Self> {
+    pub(crate) fn new(assets: Rc<GameAssets>, high_score: i32) -> Result<Self> {
         let mut landscape = Vec::new();
         let mut last_point = Vector::new(0.0, 15 * WINDOW_HEIGHT / 16);
         for x in (0..WINDOW_WIDTH + 32).step_by(32) {
@@ -89,11 +90,11 @@ impl Playing {
         let render_assets = RenderAssets::new();
         let collision_assets = CollisionAssets::new();
         Ok(Self {
-            assets: assets.clone(),
+            assets: Rc::clone(&assets),
             camera: Camera {
                 pos: Vector::new(0, 0),
             },
-            line_renderer: LineRenderer::new(assets["line"].clone()),
+            line_renderer: LineRenderer::new(assets.images["line"].clone()),
             player: Player::new(
                 render_assets.player(),
                 collision_assets.player(),
@@ -108,7 +109,7 @@ impl Playing {
             input: Input::new()?,
             render_assets: render_assets,
             collision_assets: collision_assets,
-            particles: Particles::new(512, assets["particle"].clone()),
+            particles: Particles::new(512, assets.images["particle"].clone()),
             font: VectorFont::new(),
             score: 0,
             score_model: RenderModel::new(Vec::new()),
@@ -481,7 +482,7 @@ impl GameState for Playing {
             )?))
         } else if self.lives == 0 && !self.is_amnesty() {
             Transition(Box::new(Menu::new(
-                self.assets.clone(),
+                Rc::clone(&self.assets),
                 self.high_score,
                 Some(self.score),
             )?))
