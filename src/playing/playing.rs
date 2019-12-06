@@ -390,6 +390,7 @@ impl GameState for Playing {
                     self.player.angle(),
                 );
                 self.shots.push(shot);
+                self.assets.sounds["hit01"].play()?;
             }
             if bomb && self.bomb_cooldown == 0 {
                 let bomb = Bomb::new(
@@ -400,6 +401,7 @@ impl GameState for Playing {
                 );
                 self.bombs.push(bomb);
                 self.bomb_cooldown = BOMB_COOLDOWN_TICKS;
+                self.assets.sounds["hit02"].play()?;
             }
 
             match self.landscape.update(&self.camera) {
