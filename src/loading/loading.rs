@@ -38,7 +38,7 @@ impl Loading {
             );
         }
         let mut sounds: HashMap<String, Asset<Sound>> = HashMap::new();
-        for name in vec!["hit01", "hit02"] {
+        for name in vec!["hit01", "hit02", "drop_bomb"] {
             sounds.insert(
                 name.to_string(),
                 Asset::new(Sound::load(name.to_string() + ".wav")),

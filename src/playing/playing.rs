@@ -47,6 +47,12 @@ const TURRET_SCORE: i32 = 150;
 
 const BOMB_COOLDOWN_TICKS: i32 = 20;
 
+const PLAYER_FIRE_SOUND: &str = "hit01";
+const PLAYER_DROP_BOMB_SOUND: &str = "drop_bomb";
+const PLAYER_EXPLODE_SOUND: &str = "hit02";
+const TURRET_EXPLODE_SOUND: &str = "hit02";
+const ROCKET_EXPLODE_SOUND: &str = "hit02";
+
 pub struct Playing {
     assets: Rc<GameAssets>,
     camera: Camera,
@@ -149,6 +155,10 @@ impl Playing {
         self.bomb_cooldown = 0;
     }
 
+    fn play_sound(&self, name: &str) {
+        if let Ok(_) = self.assets.sounds[name].play() {}
+    }
+
     /// Collide the player.
     fn collide_player(&mut self) {
         if !self.player.is_alive() {
@@ -192,16 +202,19 @@ impl Playing {
             self.lives -= 1;
             self.redraw_lives = true;
             self.amnesty = 4.0 * (FIXED_UPDATE_INTERVAL_MS * FIXED_UPDATE_HZ) as f32;
+            self.play_sound(PLAYER_EXPLODE_SOUND);
         }
     }
 
-    /// Collide the player's shots.
-    fn collide_shots(&mut self) {
+    /// Collide the player's shots and bombs.
+    fn collide_shots_and_bombs(&mut self) {
         let particles = &mut self.particles;
         let old_score = self.score;
         let old_high_score = self.high_score;
 
         let score = &mut self.score;
+        let mut hit_rocket = false;
+        let mut hit_turret = false;
 
         // Collide the player's shots with the landscape.
         collide_many_one(&mut self.shots, &mut self.landscape, |shot, _landscape| {
@@ -215,6 +228,7 @@ impl Playing {
             rocket.kill();
             particles.add(48, rocket.world_pos(), shot.angle(), 30.0);
             *score += ROCKET_SCORE;
+            hit_rocket = true;
         });
 
         // Collide the player's shots with the turrets.
@@ -223,6 +237,7 @@ impl Playing {
             turret.kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             *score += TURRET_SCORE;
+            hit_turret = true;
         });
 
         // Collide the player's bombs with the landscape.
@@ -237,6 +252,7 @@ impl Playing {
             rocket.kill();
             particles.add(48, rocket.world_pos(), 0.0, 180.0);
             *score += ROCKET_SCORE;
+            hit_rocket = true;
         });
 
         // Collide the player's bombs with the turrets.
@@ -245,17 +261,23 @@ impl Playing {
             turret.kill();
             particles.add(64, turret.world_pos(), 0.0, 45.0);
             *score += TURRET_SCORE;
+            hit_turret = true;
         });
 
-        self.high_score = self.high_score.max(self.score);
+        if hit_rocket {
+            self.play_sound(ROCKET_EXPLODE_SOUND);
+        } else if hit_turret {
+            self.play_sound(TURRET_EXPLODE_SOUND);
+        }
 
+        self.high_score = self.high_score.max(self.score);
         self.redraw_score = self.redraw_score || (self.score != old_score);
         self.redraw_high_score = self.redraw_high_score || (self.high_score != old_high_score);
     }
 
     fn check_collisions(&mut self) {
         self.collide_player();
-        self.collide_shots();
+        self.collide_shots_and_bombs();
     }
 
     fn draw_status(&mut self) {
@@ -390,7 +412,7 @@ impl GameState for Playing {
                     self.player.angle(),
                 );
                 self.shots.push(shot);
-                self.assets.sounds["hit01"].play()?;
+                self.play_sound(PLAYER_FIRE_SOUND);
             }
             if bomb && self.bomb_cooldown == 0 {
                 let bomb = Bomb::new(
@@ -401,7 +423,7 @@ impl GameState for Playing {
                 );
                 self.bombs.push(bomb);
                 self.bomb_cooldown = BOMB_COOLDOWN_TICKS;
-                self.assets.sounds["hit02"].play()?;
+                self.play_sound(PLAYER_DROP_BOMB_SOUND);
             }
 
             match self.landscape.update(&self.camera) {
